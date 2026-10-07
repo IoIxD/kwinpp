@@ -10,14 +10,15 @@ FILE(GLOB_RECURSE sources src/*.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${sources})
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
+
 target_link_libraries(${PROJECT_NAME}
   PUBLIC Qt6::Core Qt6::Gui
-  PRIVATE Qt6::DBus)
+  PRIVATE PkgConfig::DBUS)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory(examples)
-
-

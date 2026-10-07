@@ -1,24 +1,26 @@
 #include "kwinpp.hpp"
 #include "kwinppi.hpp"
 
-#include <QCoreApplication>
-#include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusVirtualObject>
-#include <QDir>
 #include <QHash>
 #include <QJsonDocument>
 #include <QQueue>
-#include <QTemporaryFile>
-#include <QTimerEvent>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdlib>
 #include <mutex>
 #include <optional>
-#include <string>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <thread>
+#include <vector>
+
+#include <cerrno>
+#include <dbus/dbus.h>
+#include <poll.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
 
 namespace KWin {
 WorkspaceWrapper workspace;
@@ -33,7 +35,8 @@ constexpr auto PLUGIN_NAME = "kwinpp";
 
 /* Loaded into KWin once. It long-polls us over D-Bus for requests
  * ({id, target, func, args}), runs the matching entry of `api` and sends
- * {id, value} or {id, error} back. KWin objects never leave KWin: they're kept
+ * {id, value} or {id, error} back. {release} requests drop an object from
+ * `objects` and get no answer. KWin objects never leave KWin: they're kept
  * in `objects` and we get the key they're stored under instead. */
 const char *const KWIN_SCRIPT = R"KWINPP(
 const SERVICE = "net.ioi_xd.kwinpp";
@@ -61,6 +64,15 @@ function deref(key) {
     if (obj === undefined)
         throw new Error("unknown kwinpp reference " + key);
     return obj;
+}
+
+// Forgets the object stored under key, so KWin can free it.
+function release(key) {
+    const obj = objects.get(key);
+    if (obj === undefined)
+        return;
+    objects.delete(key);
+    keys.delete(obj);
 }
 
 function encode(v) {
@@ -195,6 +207,10 @@ function handle(request) {
     if (request === "") // keepalive
         return;
     const req = JSON.parse(request);
+    if ("release" in req) { // sent by handle destructors, not answered
+        release(req.release);
+        return;
+    }
     let reply;
     try {
         const fn = api[req.func];
@@ -219,68 +235,162 @@ function poll() {
 poll();
 )KWINPP";
 
-/* The D-Bus end of the script. Lives on kwinpp's application thread (see
- * startApplication) so polls get answered whatever the program is doing. */
-class Bridge : public QDBusVirtualObject {
+/* Owns a libdbus error and frees it when it goes out of scope. */
+struct DBusErrorHolder {
+  DBusError error;
+  DBusErrorHolder() { dbus_error_init(&error); }
+  ~DBusErrorHolder() { dbus_error_free(&error); }
+  DBusErrorHolder(const DBusErrorHolder &) = delete;
+  DBusErrorHolder &operator=(const DBusErrorHolder &) = delete;
+  operator DBusError *() { return &error; }
+  bool isSet() const { return dbus_error_is_set(&error); }
+  std::string message() const { return error.message ? error.message : ""; }
+};
+
+constexpr auto INTROSPECTION =
+    R"(<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="net.ioi_xd.kwinpp">
+    <method name="poll"><arg direction="out" type="s"/></method>
+    <method name="result"><arg direction="in" type="s"/></method>
+  </interface>
+</node>
+)";
+
+/* KWin gives up on a D-Bus call after ~25s and the script's poll loop dies
+ * with it, so idle polls are answered before that happens. */
+constexpr auto KEEPALIVE = std::chrono::seconds(10);
+
+/* The D-Bus end of the script. kwinpp has a private session bus connection
+ * that's only touched by its own thread (see run), so polls get answered
+ * whatever the program is doing and no event loop is needed from it. */
+class Bridge {
 public:
+  DBusConnection *connection = nullptr;
+  int wakeFd = -1; // eventfd, written to make run() look at `requests`
+
   std::mutex mutex;
   std::condition_variable cv;
   bool ready = false; // the script has polled at least once
-  std::optional<QDBusMessage> pendingPoll;
+  DBusMessage *pendingPoll = nullptr;
+  std::chrono::steady_clock::time_point pendingPollSince;
   QQueue<QString> requests;
   QHash<qint64, QJsonObject> results;
 
-  QString introspect(const QString &) const override {
-    return QStringLiteral(R"(<interface name="net.ioi_xd.kwinpp">
-  <method name="poll"><arg direction="out" type="s"/></method>
-  <method name="result"><arg direction="in" type="s"/></method>
-</interface>)");
+  /* Queues a request for the script. Call from any thread, with mutex held. */
+  void submit(const QString &request) {
+    requests.enqueue(request);
+    const uint64_t one = 1;
+    (void)!write(wakeFd, &one, sizeof(one));
   }
 
-  bool handleMessage(const QDBusMessage &message,
-                     const QDBusConnection &connection) override {
-    if (message.member() == "poll") {
+  static DBusHandlerResult handleMessage(DBusConnection *, DBusMessage *message,
+                                         void *data) {
+    return static_cast<Bridge *>(data)->handle(message);
+  }
+
+  /* The bus loop. Never returns unless the bus connection goes away. */
+  void run() {
+    const int busFd = [this] {
+      int fd = -1;
+      dbus_connection_get_unix_fd(connection, &fd);
+      return fd;
+    }();
+    for (;;) {
+      // messages may already be buffered (e.g. read during start()'s calls)
+      if (!dbus_connection_read_write(connection, 0))
+        return;
+      while (dbus_connection_dispatch(connection) ==
+             DBUS_DISPATCH_DATA_REMAINS) {
+      }
+
+      int timeout = -1;
+      {
+        std::lock_guard lock(mutex);
+        flush();
+        if (pendingPoll) {
+          const auto now = std::chrono::steady_clock::now();
+          if (now - pendingPollSince >= KEEPALIVE)
+            replyToPoll(QString());
+          else
+            timeout = std::chrono::ceil<std::chrono::milliseconds>(
+                          pendingPollSince + KEEPALIVE - now)
+                          .count();
+        }
+      }
+
+      pollfd fds[] = {
+          {busFd,
+           short(POLLIN |
+                 (dbus_connection_has_messages_to_send(connection) ? POLLOUT
+                                                                   : 0)),
+           0},
+          {wakeFd, POLLIN, 0},
+      };
+      if (poll(fds, 2, timeout) > 0 && (fds[1].revents & POLLIN)) {
+        uint64_t count;
+        (void)!read(wakeFd, &count, sizeof(count));
+      }
+    }
+  }
+
+private:
+  DBusHandlerResult handle(DBusMessage *message) {
+    if (dbus_message_is_method_call(message, INTERFACE, "poll")) {
       std::lock_guard lock(mutex);
       if (pendingPoll)
-        connection.send(pendingPoll->createReply(QString()));
-      pendingPoll = message;
+        replyToPoll(QString());
+      pendingPoll = dbus_message_ref(message);
+      pendingPollSince = std::chrono::steady_clock::now();
       ready = true;
       flush();
       cv.notify_all();
-      return true;
+      return DBUS_HANDLER_RESULT_HANDLED;
     }
-    if (message.member() == "result" && !message.arguments().isEmpty()) {
+    if (dbus_message_is_method_call(message, INTERFACE, "result")) {
+      DBusErrorHolder error;
+      const char *json = nullptr;
+      if (!dbus_message_get_args(message, error, DBUS_TYPE_STRING, &json,
+                                 DBUS_TYPE_INVALID))
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
       const QJsonObject reply =
-          QJsonDocument::fromJson(
-              message.arguments().first().toString().toUtf8())
-              .object();
-      connection.send(message.createReply());
+          QJsonDocument::fromJson(QByteArray(json)).object();
+      sendReply(message, nullptr);
       std::lock_guard lock(mutex);
       results.insert(reply["id"].toInteger(), reply);
       cv.notify_all();
-      return true;
+      return DBUS_HANDLER_RESULT_HANDLED;
     }
-    return false;
+    if (dbus_message_is_method_call(message, DBUS_INTERFACE_INTROSPECTABLE,
+                                    "Introspect")) {
+      sendReply(message, INTROSPECTION);
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
+
+  /* Answers call, with string as its only argument if it isn't null. */
+  void sendReply(DBusMessage *call, const char *string) {
+    DBusMessage *reply = dbus_message_new_method_return(call);
+    if (string)
+      dbus_message_append_args(reply, DBUS_TYPE_STRING, &string,
+                               DBUS_TYPE_INVALID);
+    dbus_connection_send(connection, reply, nullptr);
+    dbus_message_unref(reply);
+  }
+
+  /* Call with mutex held and a poll pending. */
+  void replyToPoll(const QString &request) {
+    sendReply(pendingPoll, request.toUtf8().constData());
+    dbus_message_unref(pendingPoll);
+    pendingPoll = nullptr;
   }
 
   /* Hands the next request to a waiting poll. Call with mutex held. */
   void flush() {
-    if (!pendingPoll || requests.isEmpty())
-      return;
-    QDBusConnection::sessionBus().send(
-        pendingPoll->createReply(requests.dequeue()));
-    pendingPoll.reset();
-  }
-
-protected:
-  /* KWin gives up on a D-Bus call after ~25s and the script's poll loop dies
-   * with it, so answer idle polls before that happens. */
-  void timerEvent(QTimerEvent *) override {
-    std::lock_guard lock(mutex);
-    if (!pendingPoll)
-      return;
-    QDBusConnection::sessionBus().send(pendingPoll->createReply(QString()));
-    pendingPoll.reset();
+    if (pendingPoll && !requests.isEmpty())
+      replyToPoll(requests.dequeue());
   }
 };
 
@@ -288,71 +398,102 @@ constexpr auto CALL_TIMEOUT = std::chrono::seconds(5);
 
 Bridge *bridge = nullptr;
 
-void callKWin(const QString &path, const QString &interface,
-              const QString &method, const QVariantList &args,
-              QVariant *result = nullptr) {
-  QDBusMessage message =
-      QDBusMessage::createMethodCall("org.kde.KWin", path, interface, method);
-  message.setArguments(args);
-  const QDBusMessage reply = QDBusConnection::sessionBus().call(message);
-  if (reply.type() == QDBusMessage::ErrorMessage)
-    throw std::runtime_error("kwinpp: " + method.toStdString() + ": " +
-                             reply.errorMessage().toStdString());
-  if (result && !reply.arguments().isEmpty())
-    *result = reply.arguments().first();
+/* Calls method on KWin with the given string arguments, blocking until it
+ * answers. Only used by start(), before the bus loop takes the connection. */
+void callKWin(const char *path, const char *interface, const char *method,
+              const std::vector<std::string> &args = {},
+              int32_t *result = nullptr) {
+  DBusMessage *message =
+      dbus_message_new_method_call("org.kde.KWin", path, interface, method);
+  for (const std::string &arg : args) {
+    const char *value = arg.c_str();
+    dbus_message_append_args(message, DBUS_TYPE_STRING, &value,
+                             DBUS_TYPE_INVALID);
+  }
+  DBusErrorHolder error;
+  DBusMessage *reply = dbus_connection_send_with_reply_and_block(
+      bridge->connection, message, DBUS_TIMEOUT_USE_DEFAULT, error);
+  dbus_message_unref(message);
+  if (!reply)
+    throw std::runtime_error("kwinpp: " + std::string(method) + ": " +
+                             error.message());
+  if (result && !dbus_message_get_args(reply, error, DBUS_TYPE_INT32, result,
+                                       DBUS_TYPE_INVALID)) {
+    dbus_message_unref(reply);
+    throw std::runtime_error("kwinpp: " + std::string(method) + ": " +
+                             error.message());
+  }
+  dbus_message_unref(reply);
 }
 
-/* Qt D-Bus only delivers calls while the application thread is in its event
- * loop, and the program's main thread isn't ours to block. So the
- * QCoreApplication is created on, and runs on, a thread of our own. */
-void startApplication() {
-  std::mutex mutex;
-  std::condition_variable cv;
-  bool running = false;
-  std::thread([&] {
-    static int argc = 1;
-    static char arg0[] = "kwinpp";
-    static char *argv[] = {arg0, nullptr};
-    new QCoreApplication(argc, argv);
-    bridge = new Bridge();
-    bridge->startTimer(10000);
-    {
-      std::lock_guard lock(mutex);
-      running = true;
+/* Writes KWIN_SCRIPT to a new file in $TMPDIR (or /tmp) and returns its path.
+ * KWin reads the file when the script is run, so it's kept around until the
+ * program exits. */
+const std::string &writeScriptFile() {
+  const char *dir = getenv("TMPDIR");
+  static std::string path =
+      std::string(dir && *dir ? dir : "/tmp") + "/kwinpp-XXXXXX.js";
+  const int fd = mkstemps(path.data(), 3);
+  if (fd < 0)
+    throw std::runtime_error("kwinpp: couldn't create the KWin script file");
+  atexit([] { unlink(path.c_str()); });
+
+  const std::string_view script = KWIN_SCRIPT;
+  for (size_t written = 0; written < script.size();) {
+    const ssize_t n =
+        write(fd, script.data() + written, script.size() - written);
+    if (n < 0 && errno == EINTR)
+      continue;
+    if (n < 0) {
+      close(fd);
+      throw std::runtime_error("kwinpp: couldn't write the KWin script");
     }
-    cv.notify_all();
-    QCoreApplication::exec();
-  }).detach();
-  std::unique_lock lock(mutex);
-  cv.wait(lock, [&] { return running; });
+    written += n;
+  }
+  close(fd);
+  return path;
 }
 
 void start() {
-  startApplication();
+  dbus_threads_init_default();
+  bridge = new Bridge();
 
-  QDBusConnection bus = QDBusConnection::sessionBus();
-  if (!bus.registerService(SERVICE))
+  DBusErrorHolder error;
+  // a private connection, so the program's own use of the bus isn't affected
+  bridge->connection = dbus_bus_get_private(DBUS_BUS_SESSION, error);
+  if (!bridge->connection)
+    throw std::runtime_error("kwinpp: couldn't connect to the session bus: " +
+                             error.message());
+  dbus_connection_set_exit_on_disconnect(bridge->connection, false);
+
+  if (dbus_bus_request_name(bridge->connection, SERVICE,
+                            DBUS_NAME_FLAG_DO_NOT_QUEUE,
+                            error) != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
     throw std::runtime_error("kwinpp: couldn't register " +
                              std::string(SERVICE) + " on the session bus");
-  if (!bus.registerVirtualObject(PATH, bridge))
+  static const DBusObjectPathVTable vtable = {nullptr, &Bridge::handleMessage};
+  if (!dbus_connection_register_object_path(bridge->connection, PATH, &vtable,
+                                            bridge))
     throw std::runtime_error("kwinpp: couldn't register " + std::string(PATH));
 
-  // KWin reads the file when the script is run, so keep it around
-  static QTemporaryFile scriptFile(QDir::tempPath() + "/kwinpp-XXXXXX.js");
-  if (!scriptFile.open())
-    throw std::runtime_error("kwinpp: couldn't write the KWin script");
-  scriptFile.write(KWIN_SCRIPT);
-  scriptFile.flush();
+  bridge->wakeFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+  if (bridge->wakeFd < 0)
+    throw std::runtime_error("kwinpp: couldn't create an eventfd");
+
+  const std::string &scriptPath = writeScriptFile();
 
   callKWin("/Scripting", "org.kde.kwin.Scripting", "unloadScript",
-           {QString(PLUGIN_NAME)});
-  QVariant id;
+           {PLUGIN_NAME});
+  int32_t id = -1;
   callKWin("/Scripting", "org.kde.kwin.Scripting", "loadScript",
-           {scriptFile.fileName(), QString(PLUGIN_NAME)}, &id);
-  if (id.toInt() < 0)
+           {scriptPath, PLUGIN_NAME}, &id);
+  if (id < 0)
     throw std::runtime_error("kwinpp: KWin refused to load the script");
-  callKWin("/Scripting/Script" + QString::number(id.toInt()),
-           "org.kde.kwin.Script", "run", {});
+  callKWin(("/Scripting/Script" + std::to_string(id)).c_str(),
+           "org.kde.kwin.Script", "run");
+
+  // from here on only the bus thread touches the connection
+  std::thread([] { bridge->run(); }).detach();
 
   std::unique_lock lock(bridge->mutex);
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT, [] { return bridge->ready; }))
@@ -363,8 +504,7 @@ void start() {
  * function, so the error is rethrown from the first call instead. */
 std::optional<std::string> startError;
 
-/* Runs when the library is loaded, before main(). This makes kwinpp own the
- * process's QCoreApplication, so programs using it must not create their own. */
+/* Runs when the library is loaded, before main(). */
 __attribute__((constructor)) void startOnLoad() {
   try {
     start();
@@ -398,6 +538,27 @@ QString ref_of(const void *handle) {
   return handleRefs.value(handle);
 }
 
+void release_handle(const void *handle) noexcept {
+  QString ref;
+  {
+    std::lock_guard lock(handleMutex);
+    ref = handleRefs.take(handle);
+    if (ref.isEmpty())
+      return; // a copy, or not a handle at all
+    handles.remove(ref);
+  }
+  if (startError || !bridge)
+    return;
+  try {
+    const QJsonObject request{{"release", ref}};
+    std::lock_guard lock(bridge->mutex);
+    bridge->submit(QString::fromUtf8(
+        QJsonDocument(request).toJson(QJsonDocument::Compact)));
+  } catch (...) {
+    // destructors can't throw, and a leaked object in KWin is harmless
+  }
+}
+
 QJsonValue call_kwin_func_raw(const QString &target, const QString &func,
                               const QJsonArray &args) {
   if (startError)
@@ -409,9 +570,8 @@ QJsonValue call_kwin_func_raw(const QString &target, const QString &func,
       {"id", id}, {"target", target}, {"func", func}, {"args", args}};
 
   std::unique_lock lock(bridge->mutex);
-  bridge->requests.enqueue(
+  bridge->submit(
       QString::fromUtf8(QJsonDocument(request).toJson(QJsonDocument::Compact)));
-  bridge->flush();
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT,
                            [id] { return bridge->results.contains(id); }))
     throw std::runtime_error("kwinpp: KWin didn't answer " +

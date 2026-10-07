@@ -18,8 +18,6 @@
 #include <string>
 #include <type_traits>
 
-#include "kwinpp.hpp"
-
 namespace kwinpp_internal {
 
 /* Every KWin object handed to us by the script is identified by the key it was
@@ -30,11 +28,14 @@ void *handle_for(const QString &ref, void *(*create)());
 template <typename T> T *handle_for(const QString &ref) {
   if (ref.isEmpty())
     return nullptr;
-  return static_cast<T *>(
-      handle_for(ref, []() -> void * { return new T(); }));
+  return static_cast<T *>(handle_for(ref, []() -> void * { return new T(); }));
 }
 /* The key for a handle, "workspace" for KWin::workspace. */
 QString ref_of(const void *handle);
+/* Called by handle destructors. Forgets the handle and tells the script to
+ * drop the object it refers to. Does nothing for anything that isn't a handle
+ * (e.g. a copy of one). */
+void release_handle(const void *handle) noexcept;
 
 /* Runs func ("Class.member") on the object referenced by target inside KWin
  * and returns the JSON encoded result. Throws std::runtime_error if KWin
@@ -64,8 +65,7 @@ template <typename T> QJsonValue to_json(const T &v) {
     return static_cast<double>(v);
   } else if constexpr (std::is_convertible_v<const U &, QString>) {
     return QString(v);
-  } else if constexpr (std::is_same_v<U, QRect> ||
-                       std::is_same_v<U, QRectF>) {
+  } else if constexpr (std::is_same_v<U, QRect> || std::is_same_v<U, QRectF>) {
     return QJsonObject{{"x", v.x()},
                        {"y", v.y()},
                        {"width", v.width()},
@@ -73,8 +73,7 @@ template <typename T> QJsonValue to_json(const T &v) {
   } else if constexpr (std::is_same_v<U, QPoint> ||
                        std::is_same_v<U, QPointF>) {
     return QJsonObject{{"x", v.x()}, {"y", v.y()}};
-  } else if constexpr (std::is_same_v<U, QSize> ||
-                       std::is_same_v<U, QSizeF>) {
+  } else if constexpr (std::is_same_v<U, QSize> || std::is_same_v<U, QSizeF>) {
     return QJsonObject{{"width", v.width()}, {"height", v.height()}};
   } else if constexpr (is_qlist<U>::value) {
     QJsonArray array;
@@ -91,8 +90,7 @@ template <typename T> T from_json(const QJsonValue &v) {
   if constexpr (std::is_void_v<U>) {
     return;
   } else if constexpr (std::is_pointer_v<U>) {
-    return handle_for<std::remove_cv_t<std::remove_pointer_t<U>>>(
-        v.toString());
+    return handle_for<std::remove_cv_t<std::remove_pointer_t<U>>>(v.toString());
   } else if constexpr (std::is_same_v<U, bool>) {
     return v.toBool();
   } else if constexpr (std::is_enum_v<U> || std::is_integral_v<U>) {
