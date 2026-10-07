@@ -1,21 +1,6 @@
 #include "kwinpp.hpp"
 #include <print>
 
-#ifndef KWINPP_NO_QT
-// with KWINPP_NO_QT off the API returns Qt strings, which std::format can't
-// print by itself
-template <> struct std::formatter<QString> : std::formatter<std::string> {
-  auto format(const QString &s, auto &ctx) const {
-    return std::formatter<std::string>::format(s.toStdString(), ctx);
-  }
-};
-template <> struct std::formatter<QUuid> : std::formatter<QString> {
-  auto format(const QUuid &id, auto &ctx) const {
-    return std::formatter<QString>::format(id.toString(), ctx);
-  }
-};
-#endif
-
 using namespace KWin;
 
 int main() {
