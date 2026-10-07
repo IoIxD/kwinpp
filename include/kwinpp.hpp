@@ -3,9 +3,54 @@
 /* translation of the APIs listed on
  * https://develop.kde.org/docs/plasma/kwin/api/#global */
 
-#include <Qt>
-#include <QtCore/QtCore>
+#include <chrono>
+#include <cstdint>
 #include <functional>
+
+#ifdef KWINPP_NO_QT
+#include <string>
+#include <vector>
+
+#include "kwinpp_types.hpp"
+
+namespace KWin {
+using String = std::string;
+using StringList = std::vector<std::string>;
+template <typename T> using List = std::vector<T>;
+using Uuid = std::string; // as formatted by QUuid::toString()
+using Region = std::vector<Rect>;
+} // namespace KWin
+#else
+#include <QIcon>
+#include <QList>
+#include <QPalette>
+#include <QPoint>
+#include <QPointF>
+#include <QRect>
+#include <QRectF>
+#include <QRegion>
+#include <QSize>
+#include <QSizeF>
+#include <QString>
+#include <QStringList>
+#include <QUuid>
+#include <Qt>
+
+namespace KWin {
+using String = QString;
+using StringList = QStringList;
+template <typename T> using List = QList<T>;
+using Uuid = QUuid;
+using Region = QRegion;
+using Point = QPoint;
+using PointF = QPointF;
+using Size = QSize;
+using SizeF = QSizeF;
+using Rect = QRect;
+using RectF = QRectF;
+using Edge = Qt::Edge;
+} // namespace KWin
+#endif
 
 #include "kwinppi.hpp"
 
@@ -43,12 +88,12 @@ public:
     ElectricNone,
   };
 
-  const QList<KWin::VirtualDesktop *> desktops() {
-    return kwinpp_internal::call_kwin_func<const QList<KWin::VirtualDesktop *>>(
+  const List<KWin::VirtualDesktop *> desktops() {
+    return kwinpp_internal::call_kwin_func<const List<KWin::VirtualDesktop *>>(
         "workspace", "WorkspaceWrapper.desktops");
   }
-  const QSize desktopGridSize() {
-    return kwinpp_internal::call_kwin_func<const QSize>(
+  const Size desktopGridSize() {
+    return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.desktopGridSize");
   }
   const int desktopGridWidth() {
@@ -67,45 +112,45 @@ public:
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.workspaceHeight");
   }
-  const QSize workspaceSize() {
-    return kwinpp_internal::call_kwin_func<const QSize>(
+  const Size workspaceSize() {
+    return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.workspaceSize");
   }
   const KWin::Output *activeScreen() {
     return kwinpp_internal::call_kwin_func<const KWin::Output *>(
         "workspace", "WorkspaceWrapper.activeScreen");
   }
-  const QList<KWin::Output *> screens() {
-    return kwinpp_internal::call_kwin_func<const QList<KWin::Output *>>(
+  const List<KWin::Output *> screens() {
+    return kwinpp_internal::call_kwin_func<const List<KWin::Output *>>(
         "workspace", "WorkspaceWrapper.screens");
   }
-  const QStringList activities() {
-    return kwinpp_internal::call_kwin_func<const QStringList>(
+  const StringList activities() {
+    return kwinpp_internal::call_kwin_func<const StringList>(
         "workspace", "WorkspaceWrapper.activities");
   }
   /*The bounding size of all screens combined. Overlapping areas are not counted
    * multiple times. */
-  const QSize virtualScreenSize() {
-    return kwinpp_internal::call_kwin_func<const QSize>(
+  const Size virtualScreenSize() {
+    return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.virtualScreenSize");
   }
   /*The bounding geometry of all screens combined. Always starts at (0,0) and
    * has virtualScreenSize as it's size. */
-  const QRect virtualScreenGeometry() {
-    return kwinpp_internal::call_kwin_func<const QRect>(
+  const Rect virtualScreenGeometry() {
+    return kwinpp_internal::call_kwin_func<const Rect>(
         "workspace", "WorkspaceWrapper.virtualScreenGeometry");
   }
   /* List of Clients currently managed by KWin, orderd by their visibility
    * (later ones cover earlier ones).*/
-  const QList<KWin::Window *> stackingOrder() {
-    return kwinpp_internal::call_kwin_func<const QList<KWin::Window *>>(
+  const List<KWin::Window *> stackingOrder() {
+    return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
         "workspace", "WorkspaceWrapper.stackingOrder");
   }
 
   /* The current position of the cursor. */
-  QPoint cursorPos() {
-    return kwinpp_internal::call_kwin_func<QPoint>(
-        "workspace", "WorkspaceWrapper.cursorPos");
+  Point cursorPos() {
+    return kwinpp_internal::call_kwin_func<Point>("workspace",
+                                                  "WorkspaceWrapper.cursorPos");
   }
 
   /* The current virtual desktop on the active screen. */
@@ -128,11 +173,11 @@ public:
         "workspace", "WorkspaceWrapper.setActiveWindow", val);
   }
 
-  QString currentActivity() {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String currentActivity() {
+    return kwinpp_internal::call_kwin_func<String>(
         "workspace", "WorkspaceWrapper.currentActivity");
   }
-  void setCurrentActivity(QString val) {
+  void setCurrentActivity(String val) {
     return kwinpp_internal::call_kwin_func<void>(
         "workspace", "WorkspaceWrapper.setCurrentActivity", val);
   }
@@ -150,17 +195,16 @@ public:
   void onScreensChanged(std::function<void()> callback);
   /* Signal emitted whenever the current activity changed. id id of the new
    * activity */
-  void
-  onCurrentActivityChanged(std::function<void(const QString &id)> callback);
+  void onCurrentActivityChanged(std::function<void(const String &id)> callback);
   /* Signal emitted whenever the list of activities changed. id id of the new
    * activity */
-  void onActivitiesChanged(std::function<void(const QString &id)> callback);
+  void onActivitiesChanged(std::function<void(const String &id)> callback);
   /* This signal is emitted when a new activity is added id id of the new
    * activity */
-  void onActivityAdded(std::function<void(const QString &id)> callback);
+  void onActivityAdded(std::function<void(const String &id)> callback);
   /* This signal is emitted when the activity is removed id id of the removed
    * activity */
-  void onActivityRemoved(std::function<void(const QString &id)> callback);
+  void onActivityRemoved(std::function<void(const String &id)> callback);
   /* Emitted whenever the virtualScreenSize changes. virtualScreenSize() 5.0 */
   void onVirtualScreenSizeChanged(std::function<void()> callback);
   /* Emitted whenever the virtualScreenGeometry changes.
@@ -442,7 +486,7 @@ public:
   /* Shows an outline at the specified geometry. If an outline is already shown
    * the outline is moved to the new position. Use hideOutline to remove the
    * outline again. */
-  void showOutline(const QRect &geometry) {
+  void showOutline(const Rect &geometry) {
     return kwinpp_internal::call_kwin_func<void>(
         "workspace", "WorkspaceWrapper.showOutline", geometry);
   }
@@ -468,11 +512,11 @@ public:
         "workspace", "WorkspaceWrapper.setCurrentDesktopForScreen", desktop,
         output);
   }
-  KWin::Output *screenAt(const QPointF &pos) const {
+  KWin::Output *screenAt(const PointF &pos) const {
     return kwinpp_internal::call_kwin_func<KWin::Output *>(
         "workspace", "WorkspaceWrapper.screenAt", pos);
   }
-  KWin::TileManager *tilingForScreen(const QString &screenName) const {
+  KWin::TileManager *tilingForScreen(const String &screenName) const {
     return kwinpp_internal::call_kwin_func<KWin::TileManager *>(
         "workspace", "WorkspaceWrapper.tilingForScreen", screenName);
   }
@@ -495,26 +539,26 @@ public:
    *
    * Returns: The specified screen geometry
    * */
-  QRectF clientArea(ClientAreaOption option, KWin::Output *output,
-                    KWin::VirtualDesktop *desktop) const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
+  RectF clientArea(ClientAreaOption option, KWin::Output *output,
+                   KWin::VirtualDesktop *desktop) const {
+    return kwinpp_internal::call_kwin_func<RectF>(
         "workspace", "WorkspaceWrapper.clientArea", option, output, desktop);
   }
   /* Overloaded method for convenience. client The Client for which the area
    * should be retrieved The specified screen geometry */
-  QRectF clientArea(ClientAreaOption option, KWin::Window *client) const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
+  RectF clientArea(ClientAreaOption option, KWin::Window *client) const {
+    return kwinpp_internal::call_kwin_func<RectF>(
         "workspace", "WorkspaceWrapper.clientArea", option, client);
   }
-  QRectF clientArea(ClientAreaOption option, const KWin::Window *client) const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
+  RectF clientArea(ClientAreaOption option, const KWin::Window *client) const {
+    return kwinpp_internal::call_kwin_func<RectF>(
         "workspace", "WorkspaceWrapper.clientArea", option, client);
   }
 
   /* Create a new virtual desktop at the requested position. position The
    * position of the desktop. It should be in range [0, count]. name The name
    * for the new desktop, if empty the default name will be used. */
-  void createDesktop(int position, const QString &name) const {
+  void createDesktop(int position, const String &name) const {
     return kwinpp_internal::call_kwin_func<void>(
         "workspace", "WorkspaceWrapper.createDesktop", position, name);
   }
@@ -524,8 +568,8 @@ public:
         "workspace", "WorkspaceWrapper.removeDesktop", desktop);
   }
   /* Provides support information about the currently running KWin instance. */
-  QString supportInformation() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String supportInformation() const {
+    return kwinpp_internal::call_kwin_func<String>(
         "workspace", "WorkspaceWrapper.supportInformation");
   }
   /* Raises a Window above all others on the screen.
@@ -537,7 +581,7 @@ public:
   }
   /* Finds the Client with the given windowId. windowId The window Id of the
    * Client The found Client or null */
-  KWin::Window *getClient(qulonglong windowId) {
+  KWin::Window *getClient(std::uint64_t windowId) {
     return kwinpp_internal::call_kwin_func<KWin::Window *>(
         "workspace", "WorkspaceWrapper.getClient", windowId);
   }
@@ -548,8 +592,8 @@ public:
    * `count`: The number of clients to return
    *
    * Returns: A list of Client objects 6.0*/
-  QList<KWin::Window *> windowAt(const QPointF &pos, int count = 1) const {
-    return kwinpp_internal::call_kwin_func<QList<KWin::Window *>>(
+  List<KWin::Window *> windowAt(const PointF &pos, int count = 1) const {
+    return kwinpp_internal::call_kwin_func<List<KWin::Window *>>(
         "workspace", "WorkspaceWrapper.windowAt", pos, count);
   }
 
@@ -559,7 +603,7 @@ public:
    *
    * Returns: true if the effect isloaded and currently active, false
    * otherwise.*/
-  bool isEffectActive(const QString &pluginId) const {
+  bool isEffectActive(const String &pluginId) const {
     return kwinpp_internal::call_kwin_func<bool>(
         "workspace", "WorkspaceWrapper.isEffectActive", pluginId);
   }
@@ -571,20 +615,20 @@ class VirtualDesktop {
 public:
   ~VirtualDesktop() { kwinpp_internal::release_handle(this); }
 
-  const QString id() {
-    return kwinpp_internal::call_kwin_func<const QString>(
+  const String id() {
+    return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.id");
   }
-  const uint x11DesktopNumber() {
-    return kwinpp_internal::call_kwin_func<const uint>(
+  const unsigned int x11DesktopNumber() {
+    return kwinpp_internal::call_kwin_func<const unsigned int>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.x11DesktopNumber");
   }
 
-  QString name() {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String name() {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.name");
   }
-  void setName(QString val) {
+  void setName(String val) {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
                                                  "VirtualDesktop.setName", val);
   }
@@ -635,28 +679,28 @@ public:
     Always,
   };
 
-  const QRect geometry() {
-    return kwinpp_internal::call_kwin_func<const QRect>(
+  const Rect geometry() {
+    return kwinpp_internal::call_kwin_func<const Rect>(
         kwinpp_internal::ref_of(this), "Output.geometry");
   }
-  const qreal devicePixelRatio() {
-    return kwinpp_internal::call_kwin_func<const qreal>(
+  const double devicePixelRatio() {
+    return kwinpp_internal::call_kwin_func<const double>(
         kwinpp_internal::ref_of(this), "Output.devicePixelRatio");
   }
-  const QString name() {
-    return kwinpp_internal::call_kwin_func<const QString>(
+  const String name() {
+    return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.name");
   }
-  const QString manufacturer() {
-    return kwinpp_internal::call_kwin_func<const QString>(
+  const String manufacturer() {
+    return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.manufacturer");
   }
-  const QString model() {
-    return kwinpp_internal::call_kwin_func<const QString>(
+  const String model() {
+    return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.model");
   }
-  const QString serialNumber() {
-    return kwinpp_internal::call_kwin_func<const QString>(
+  const String serialNumber() {
+    return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.serialNumber");
   }
 
@@ -685,7 +729,7 @@ public:
   void onChanged(std::function<void>);
   void onCurrentModeChanged(std::function<void>);
   void onModesChanged(std::function<void>);
-  void onOutputChange(std::function<void(const QRegion &damagedRegion)>);
+  void onOutputChange(std::function<void(const Region &damagedRegion)>);
   void onTransformChanged(std::function<void>);
   void onDpmsModeChanged(std::function<void>);
   void onCapabilitiesChanged(std::function<void>);
@@ -702,12 +746,12 @@ public:
   void onSdrGamutWidenessChanged(std::function<void>);
   void onColorDescriptionChanged(std::function<void>);
 
-  QPointF mapToGlobal(const QPointF &pos) const {
-    return kwinpp_internal::call_kwin_func<QPointF>(
+  PointF mapToGlobal(const PointF &pos) const {
+    return kwinpp_internal::call_kwin_func<PointF>(
         kwinpp_internal::ref_of(this), "Output.mapToGlobal", pos);
   }
-  QPointF mapFromGlobal(const QPointF &pos) const {
-    return kwinpp_internal::call_kwin_func<QPointF>(
+  PointF mapFromGlobal(const PointF &pos) const {
+    return kwinpp_internal::call_kwin_func<PointF>(
         kwinpp_internal::ref_of(this), "Output.mapFromGlobal", pos);
   }
 };
@@ -730,64 +774,64 @@ public:
   /* This property holds rectangle that the pixmap or buffer of this Window
    * occupies on the screen. This rectangle includes invisible portions of the
    * window, e.g. client-side drop shadows, etc. */
-  QRectF bufferGeometry() const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Window.bufferGeometry");
+  RectF bufferGeometry() const {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Window.bufferGeometry");
   }
   /* The geometry of the Window without frame borders. */
-  QRectF clientGeometry() const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Window.clientGeometry");
+  RectF clientGeometry() const {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Window.clientGeometry");
   }
   /* This property holds the position of the Window's frame geometry. */
-  QPointF pos() const {
-    return kwinpp_internal::call_kwin_func<QPointF>(
+  PointF pos() const {
+    return kwinpp_internal::call_kwin_func<PointF>(
         kwinpp_internal::ref_of(this), "Window.pos");
   }
   /* This property holds the size of the Window's frame geometry. */
-  QSizeF size() const {
-    return kwinpp_internal::call_kwin_func<QSizeF>(
-        kwinpp_internal::ref_of(this), "Window.size");
+  SizeF size() const {
+    return kwinpp_internal::call_kwin_func<SizeF>(kwinpp_internal::ref_of(this),
+                                                  "Window.size");
   }
   /* This property holds the x position of the Window's frame geometry. */
-  qreal x() const {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Window.x");
+  double x() const {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Window.x");
   }
   /* This property holds the y position of the Window's frame geometry. */
-  qreal y() const {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Window.y");
+  double y() const {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Window.y");
   }
   /* This property holds the width of the Window's frame geometry. */
-  qreal width() const {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Window.width");
+  double width() const {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Window.width");
   }
   /* This property holds the height of the Window's frame geometry. */
-  qreal height() const {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Window.height");
+  double height() const {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Window.height");
   }
   /* The output where the window center is on */
   KWin::Output *output() const {
     return kwinpp_internal::call_kwin_func<KWin::Output *>(
         kwinpp_internal::ref_of(this), "Window.output");
   }
-  QRectF rect() const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Window.rect");
+  RectF rect() const {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Window.rect");
   }
-  QString resourceName() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String resourceName() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.resourceName");
   }
-  QString resourceClass() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String resourceClass() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.resourceClass");
   }
-  QString windowRole() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String windowRole() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.windowRole");
   }
   /* Returns whether the window is a desktop background window (the one with
@@ -934,9 +978,9 @@ public:
                                                  "Window.outline");
   }
   /* This property holds a UUID to uniquely identify this Window. */
-  QUuid internalId() const {
-    return kwinpp_internal::call_kwin_func<QUuid>(kwinpp_internal::ref_of(this),
-                                                  "Window.internalId");
+  Uuid internalId() const {
+    return kwinpp_internal::call_kwin_func<Uuid>(kwinpp_internal::ref_of(this),
+                                                 "Window.internalId");
   }
   /* The pid of the process owning this window. 5.20 */
   int pid() const {
@@ -965,10 +1009,13 @@ public:
     return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
                                                  "Window.closeable");
   }
+#ifndef KWINPP_NO_QT
+  /* Always a null icon: icons can't be serialized from inside a KWin script. */
   QIcon icon() const {
     return kwinpp_internal::call_kwin_func<QIcon>(kwinpp_internal::ref_of(this),
                                                   "Window.icon");
   }
+#endif
   /* Whether the Window can be shaded. The property is evaluated each time it is
    * invoked. Because of that there is no notify signal. */
   bool shadeable() const {
@@ -986,9 +1033,9 @@ public:
    * https://standards.freedesktop.org/wm-spec/wm-spec-latest.html . The value
    * is evaluated each time the getter is called. Because of that no changed
    * signal is provided. */
-  QRectF iconGeometry() const {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Window.iconGeometry");
+  RectF iconGeometry() const {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Window.iconGeometry");
   }
   /* Returns whether the window is any of special windows types (desktop, dock,
    * splash, ...), i.e. window types that usually don't have a window frame and
@@ -1002,19 +1049,19 @@ public:
   /* The Caption of the Window. Read from WM_NAME property together with a
    * suffix for hostname and shortcut. To read only the caption as provided by
    * WM_NAME, use the getter with an additional false value. */
-  QString caption() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String caption() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.caption");
   }
   /* Minimum size as specified in WM_NORMAL_HINTS */
-  QSizeF minSize() const {
-    return kwinpp_internal::call_kwin_func<QSizeF>(
-        kwinpp_internal::ref_of(this), "Window.minSize");
+  SizeF minSize() const {
+    return kwinpp_internal::call_kwin_func<SizeF>(kwinpp_internal::ref_of(this),
+                                                  "Window.minSize");
   }
   /* Maximum size as specified in WM_NORMAL_HINTS */
-  QSizeF maxSize() const {
-    return kwinpp_internal::call_kwin_func<QSizeF>(
-        kwinpp_internal::ref_of(this), "Window.maxSize");
+  SizeF maxSize() const {
+    return kwinpp_internal::call_kwin_func<SizeF>(kwinpp_internal::ref_of(this),
+                                                  "Window.maxSize");
   }
   /* Whether the Window can accept keyboard focus. The value is evaluated each
    * time the getter is called. Because of that no changed signal is provided.
@@ -1095,8 +1142,8 @@ public:
    * application's desktop file name can also be the full path to the desktop
    * file (e.g. "/opt/kde/share/org.kde.foo.desktop") in case it's not in a
    * standard location. */
-  QString desktopFileName() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String desktopFileName() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.desktopFileName");
   }
   /* Whether an application menu is available for this Window */
@@ -1121,8 +1168,8 @@ public:
    * string indicates the default palette from kdeglobals is used. this
    * indicates the colour scheme requested, which might differ from the theme
    * applied if the colorScheme cannot be found */
-  QString colorScheme() const {
-    return kwinpp_internal::call_kwin_func<QString>(
+  String colorScheme() const {
+    return kwinpp_internal::call_kwin_func<String>(
         kwinpp_internal::ref_of(this), "Window.colorScheme");
   }
 
@@ -1142,11 +1189,11 @@ public:
                                                  "Window.inputMethod");
   }
 
-  qreal opacity() {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Window.opacity");
+  double opacity() {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Window.opacity");
   }
-  void setOpacity(qreal value) {
+  void setOpacity(double value) {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
                                                  "Window.setOpacity", value);
   }
@@ -1175,11 +1222,11 @@ public:
   }
   /* The virtual desktops this client is on. If it's on all desktops, the list
    * is empty. */
-  QList<KWin::VirtualDesktop *> desktops() {
-    return kwinpp_internal::call_kwin_func<QList<KWin::VirtualDesktop *>>(
+  List<KWin::VirtualDesktop *> desktops() {
+    return kwinpp_internal::call_kwin_func<List<KWin::VirtualDesktop *>>(
         kwinpp_internal::ref_of(this), "Window.desktops");
   }
-  void setDesktops(QList<KWin::VirtualDesktop *> value) {
+  void setDesktops(List<KWin::VirtualDesktop *> value) {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
                                                  "Window.setDesktops", value);
   }
@@ -1194,11 +1241,11 @@ public:
   }
   /* The activities this client is on. If it's on all activities the property is
    * empty. */
-  QStringList activities() {
-    return kwinpp_internal::call_kwin_func<QStringList>(
+  StringList activities() {
+    return kwinpp_internal::call_kwin_func<StringList>(
         kwinpp_internal::ref_of(this), "Window.activities");
   }
-  void setActivities(QStringList value) {
+  void setActivities(StringList value) {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
                                                  "Window.setActivities", value);
   }
@@ -1283,11 +1330,11 @@ public:
   /* The geometry of this Window. Be aware that depending on resize mode the
    * frameGeometryChanged signal might be emitted at each resize step or only at
    * the end of the resize operation. */
-  QRectF frameGeometry() {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Window.frameGeometry");
+  RectF frameGeometry() {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Window.frameGeometry");
   }
-  void setFrameGeometry(QRectF value) {
+  void setFrameGeometry(RectF value) {
     return kwinpp_internal::call_kwin_func<void>(
         kwinpp_internal::ref_of(this), "Window.setFrameGeometry", value);
   }
@@ -1316,7 +1363,7 @@ public:
   void onStackingOrderChanged(std::function<void()> callback);
   void onShadeChanged(std::function<void()> callback);
   void onOpacityChanged(
-      std::function<void(KWin::Window *window, qreal oldOpacity)> callback);
+      std::function<void(KWin::Window *window, double oldOpacity)> callback);
   void onDamaged(std::function<void(KWin::Window *window)> callback);
   void onInputTransformationChanged(std::function<void()> callback);
   void onClosed(std::function<void()> callback);
@@ -1338,13 +1385,13 @@ public:
   void onShadowChanged(std::function<void()> callback);
   /* This signal is emitted when the Window's buffer geometry changes. */
   void onBufferGeometryChanged(
-      std::function<void(const QRectF &oldGeometry)> callback);
+      std::function<void(const RectF &oldGeometry)> callback);
   /* This signal is emitted when the Window's frame geometry changes. */
   void onFrameGeometryChanged(
-      std::function<void(const QRectF &oldGeometry)> callback);
+      std::function<void(const RectF &oldGeometry)> callback);
   /* This signal is emitted when the Window's client geometry has changed. */
   void onClientGeometryChanged(
-      std::function<void(const QRectF &oldGeometry)> callback);
+      std::function<void(const RectF &oldGeometry)> callback);
   /* This signal is emitted when the frame geometry is about to change. the new
    * geometry is not known yet */
   void onFrameGeometryAboutToChange(std::function<void()> callback);
@@ -1366,7 +1413,9 @@ public:
   void onDesktopsChanged(std::function<void()> callback);
   void onActivitiesChanged(std::function<void()> callback);
   void onMinimizedChanged(std::function<void()> callback);
+#ifndef KWINPP_NO_QT // no std equivalent for QPalette
   void onPaletteChanged(std::function<void(const QPalette &p)> callback);
+#endif
   void onColorSchemeChanged(std::function<void()> callback);
   void onCaptionChanged(std::function<void()> callback);
   void onCaptionNormalChanged(std::function<void()> callback);
@@ -1380,7 +1429,7 @@ public:
   // void onMoveResizeCursorChanged(std::function<void(CursorShape)> callback);
   void onInteractiveMoveResizeStarted(std::function<void()> callback);
   void onInteractiveMoveResizeStepped(
-      std::function<void(const QRectF &geometry)> callback);
+      std::function<void(const RectF &geometry)> callback);
   void onInteractiveMoveResizeFinished(std::function<void()> callback);
   void onCloseableChanged(std::function<void(bool)> callback);
   void onMinimizeableChanged(std::function<void(bool)> callback);
@@ -1425,7 +1474,7 @@ public:
 
   void onTileRemoved(std::function<void(KWin::Tile *tile)> callback);
 
-  KWin::Tile *bestTileForPosition(qreal x, qreal y) {
+  KWin::Tile *bestTileForPosition(double x, double y) {
     return kwinpp_internal::call_kwin_func<KWin::Tile *>(
         kwinpp_internal::ref_of(this), "TileManager.bestTileForPosition", x, y);
   }
@@ -1440,12 +1489,12 @@ public:
     Vertical,
   };
 
-  const QRectF absoluteGeometry() {
-    return kwinpp_internal::call_kwin_func<const QRectF>(
+  const RectF absoluteGeometry() {
+    return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometry");
   }
-  const QRectF absoluteGeometryInScreen() {
-    return kwinpp_internal::call_kwin_func<const QRectF>(
+  const RectF absoluteGeometryInScreen() {
+    return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometryInScreen");
   }
   const int positionInLayout() {
@@ -1456,12 +1505,12 @@ public:
     return kwinpp_internal::call_kwin_func<const Tile *>(
         kwinpp_internal::ref_of(this), "Tile.parent");
   }
-  const QList<KWin::Tile *> tiles() {
-    return kwinpp_internal::call_kwin_func<const QList<KWin::Tile *>>(
+  const List<KWin::Tile *> tiles() {
+    return kwinpp_internal::call_kwin_func<const List<KWin::Tile *>>(
         kwinpp_internal::ref_of(this), "Tile.tiles");
   }
-  const QList<KWin::Window *> windows() {
-    return kwinpp_internal::call_kwin_func<const QList<KWin::Window *>>(
+  const List<KWin::Window *> windows() {
+    return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
         kwinpp_internal::ref_of(this), "Tile.windows");
   }
   const bool isLayout() {
@@ -1473,19 +1522,19 @@ public:
         kwinpp_internal::ref_of(this), "Tile.canBeRemoved");
   }
 
-  QRectF relativeGeometry() {
-    return kwinpp_internal::call_kwin_func<QRectF>(
-        kwinpp_internal::ref_of(this), "Tile.relativeGeometry");
+  RectF relativeGeometry() {
+    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
+                                                  "Tile.relativeGeometry");
   }
-  void setRelativeGeometry(QRectF value) {
+  void setRelativeGeometry(RectF value) {
     return kwinpp_internal::call_kwin_func<void>(
         kwinpp_internal::ref_of(this), "Tile.setRelativeGeometry", value);
   }
-  qreal padding() {
-    return kwinpp_internal::call_kwin_func<qreal>(kwinpp_internal::ref_of(this),
-                                                  "Tile.padding");
+  double padding() {
+    return kwinpp_internal::call_kwin_func<double>(
+        kwinpp_internal::ref_of(this), "Tile.padding");
   }
-  void setPadding(qreal value) {
+  void setPadding(double value) {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
                                                  "Tile.setPadding", value);
   }
@@ -1493,7 +1542,7 @@ public:
   void onRelativeGeometryChanged(std::function<void()>);
   void onAbsoluteGeometryChanged(std::function<void()>);
   void onWindowGeometryChanged(std::function<void()>);
-  void onPaddingChanged(std::function<void(qreal padding)>);
+  void onPaddingChanged(std::function<void(double padding)>);
   void onRowChanged(std::function<void(int row)>);
   void onIsLayoutChanged(std::function<void(bool isLayout)>);
   void onChildTilesChanged(std::function<void()>);
@@ -1501,7 +1550,7 @@ public:
   void onWindowRemoved(std::function<void(Window *window)>);
   void onWindowsChanged(std::function<void()>);
 
-  void resizeByPixels(qreal delta, Qt::Edge edge) {
+  void resizeByPixels(double delta, Edge edge) {
     return kwinpp_internal::call_kwin_func<void>(
         kwinpp_internal::ref_of(this), "Tile.resizeByPixels", delta, edge);
   }

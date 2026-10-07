@@ -1,6 +1,21 @@
 #include "kwinpp.hpp"
 #include <print>
 
+#ifndef KWINPP_NO_QT
+// with KWINPP_NO_QT off the API returns Qt strings, which std::format can't
+// print by itself
+template <> struct std::formatter<QString> : std::formatter<std::string> {
+  auto format(const QString &s, auto &ctx) const {
+    return std::formatter<std::string>::format(s.toStdString(), ctx);
+  }
+};
+template <> struct std::formatter<QUuid> : std::formatter<QString> {
+  auto format(const QUuid &id, auto &ctx) const {
+    return std::formatter<QString>::format(id.toString(), ctx);
+  }
+};
+#endif
+
 using namespace KWin;
 
 int main() {
@@ -16,9 +31,9 @@ int main() {
   std::println("y: {}", win->y());
   std::println("width: {}", win->width());
   std::println("height: {}", win->height());
-  std::println("resourceName: {}", win->resourceName().toStdString());
-  std::println("resourceClass: {}", win->resourceClass().toStdString());
-  std::println("windowRole: {}", win->windowRole().toStdString());
+  std::println("resourceName: {}", win->resourceName());
+  std::println("resourceClass: {}", win->resourceClass());
+  std::println("windowRole: {}", win->windowRole());
   std::println("desktopWindow: {}", win->desktopWindow());
   std::println("dock: {}", win->dock());
   std::println("toolbar: {}", win->toolbar());
@@ -41,7 +56,7 @@ int main() {
   std::println("deleted: {}", win->deleted());
   std::println("popupWindow: {}", win->popupWindow());
   std::println("outline: {}", win->outline());
-  std::println("internalId: {}", win->internalId().toString().toStdString());
+  std::println("internalId: {}", win->internalId());
   std::println("pid: {}", win->pid());
   std::println("stackingOrder: {}", win->stackingOrder());
   std::println("fullScreenable: {}", win->fullScreenable());
@@ -50,7 +65,7 @@ int main() {
   std::println("shadeable: {}", win->shadeable());
   std::println("minimizable: {}", win->minimizable());
   std::println("specialWindow: {}", win->specialWindow());
-  std::println("caption: {}", win->caption().toStdString());
+  std::println("caption: {}", win->caption());
   std::println("minSize: ({}, {})", win->minSize().width(),
                win->minSize().height());
   std::println("maxSize: ({}, {})", win->maxSize().width(),
@@ -66,11 +81,11 @@ int main() {
   std::println("moveable: {}", win->moveable());
   std::println("moveableAcrossScreens: {}", win->moveableAcrossScreens());
   std::println("resizeable: {}", win->resizeable());
-  std::println("desktopFileName: {}", win->desktopFileName().toStdString());
+  std::println("desktopFileName: {}", win->desktopFileName());
   std::println("hasApplicationMenu: {}", win->hasApplicationMenu());
   std::println("applicationMenuActive: {}", win->applicationMenuActive());
   std::println("unresponsive: {}", win->unresponsive());
-  std::println("colorScheme: {}", win->colorScheme().toStdString());
+  std::println("colorScheme: {}", win->colorScheme());
 
   delete win;
 }

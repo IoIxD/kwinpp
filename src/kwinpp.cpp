@@ -4,8 +4,11 @@
 #include <QHash>
 #include <QJsonDocument>
 #include <QQueue>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstdlib>
 #include <mutex>
@@ -14,6 +17,8 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include <cerrno>
@@ -514,43 +519,108 @@ __attribute__((constructor)) void startOnLoad() {
 }
 
 std::mutex handleMutex;
-QHash<QString, void *> handles;
-QHash<const void *, QString> handleRefs;
+std::unordered_map<std::string, void *> handles;
+std::unordered_map<const void *, std::string> handleRefs;
+
+using kwinpp_internal::Json;
+using kwinpp_internal::JsonArray;
+using kwinpp_internal::JsonObject;
+
+QJsonValue toQt(const Json &json) {
+  return std::visit(
+      [](const auto &v) -> QJsonValue {
+        using V = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<V, std::nullptr_t>) {
+          return QJsonValue::Null;
+        } else if constexpr (std::is_same_v<V, std::string>) {
+          return QString::fromStdString(v);
+        } else if constexpr (std::is_same_v<V, JsonArray>) {
+          QJsonArray array;
+          for (const Json &e : v)
+            array.append(toQt(e));
+          return array;
+        } else if constexpr (std::is_same_v<V, JsonObject>) {
+          QJsonObject object;
+          for (const auto &[key, e] : v)
+            object.insert(QString::fromStdString(key), toQt(e));
+          return object;
+        } else if constexpr (std::is_same_v<V, std::int64_t>) {
+          return qint64(v);
+        } else {
+          return v; // bool or double
+        }
+      },
+      json.value);
+}
+
+Json fromQt(const QJsonValue &value) {
+  switch (value.type()) {
+  case QJsonValue::Bool:
+    return Json(value.toBool());
+  case QJsonValue::Double: {
+    // JSON has one number type; keep whole numbers as integers
+    const double d = value.toDouble();
+    if (std::trunc(d) == d && std::abs(d) < 0x1p63)
+      return Json(static_cast<std::int64_t>(d));
+    return Json(d);
+  }
+  case QJsonValue::String:
+    return Json(value.toString().toStdString());
+  case QJsonValue::Array: {
+    JsonArray array;
+    for (const QJsonValue &e : value.toArray())
+      array.push_back(fromQt(e));
+    return Json(std::move(array));
+  }
+  case QJsonValue::Object: {
+    JsonObject object;
+    const QJsonObject o = value.toObject();
+    for (auto it = o.begin(); it != o.end(); ++it)
+      object.emplace_back(it.key().toStdString(), fromQt(it.value()));
+    return Json(std::move(object));
+  }
+  default:
+    return Json();
+  }
+}
 
 } // namespace
 
 namespace kwinpp_internal {
 
-void *handle_for(const QString &ref, void *(*create)()) {
+void *handle_for(const std::string &ref, void *(*create)()) {
   std::lock_guard lock(handleMutex);
   void *&handle = handles[ref];
   if (!handle) {
     handle = create();
-    handleRefs.insert(handle, ref);
+    handleRefs.emplace(handle, ref);
   }
   return handle;
 }
 
-QString ref_of(const void *handle) {
+std::string ref_of(const void *handle) {
   if (handle == &KWin::workspace)
     return "workspace";
   std::lock_guard lock(handleMutex);
-  return handleRefs.value(handle);
+  const auto it = handleRefs.find(handle);
+  return it == handleRefs.end() ? std::string() : it->second;
 }
 
 void release_handle(const void *handle) noexcept {
-  QString ref;
+  std::string ref;
   {
     std::lock_guard lock(handleMutex);
-    ref = handleRefs.take(handle);
-    if (ref.isEmpty())
+    const auto it = handleRefs.find(handle);
+    if (it == handleRefs.end())
       return; // a copy, or not a handle at all
-    handles.remove(ref);
+    ref = std::move(it->second);
+    handleRefs.erase(it);
+    handles.erase(ref);
   }
   if (startError || !bridge)
     return;
   try {
-    const QJsonObject request{{"release", ref}};
+    const QJsonObject request{{"release", QString::fromStdString(ref)}};
     std::lock_guard lock(bridge->mutex);
     bridge->submit(QString::fromUtf8(
         QJsonDocument(request).toJson(QJsonDocument::Compact)));
@@ -559,28 +629,29 @@ void release_handle(const void *handle) noexcept {
   }
 }
 
-QJsonValue call_kwin_func_raw(const QString &target, const QString &func,
-                              const QJsonArray &args) {
+Json call_kwin_func_raw(const std::string &target, const std::string &func,
+                        JsonArray args) {
   if (startError)
     throw std::runtime_error(*startError);
 
   static std::atomic<qint64> nextId = 0;
   const qint64 id = nextId++;
-  const QJsonObject request{
-      {"id", id}, {"target", target}, {"func", func}, {"args", args}};
+  const QJsonObject request{{"id", id},
+                            {"target", QString::fromStdString(target)},
+                            {"func", QString::fromStdString(func)},
+                            {"args", toQt(Json(std::move(args)))}};
 
   std::unique_lock lock(bridge->mutex);
   bridge->submit(
       QString::fromUtf8(QJsonDocument(request).toJson(QJsonDocument::Compact)));
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT,
                            [id] { return bridge->results.contains(id); }))
-    throw std::runtime_error("kwinpp: KWin didn't answer " +
-                             func.toStdString());
+    throw std::runtime_error("kwinpp: KWin didn't answer " + func);
   const QJsonObject reply = bridge->results.take(id);
   if (reply.contains("error"))
-    throw std::runtime_error("kwinpp: " + func.toStdString() + ": " +
+    throw std::runtime_error("kwinpp: " + func + ": " +
                              reply["error"].toString().toStdString());
-  return reply["value"];
+  return fromQt(reply["value"]);
 }
 
 } // namespace kwinpp_internal
