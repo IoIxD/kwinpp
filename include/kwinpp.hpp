@@ -102,10 +102,11 @@ public:
         "workspace", "WorkspaceWrapper.stackingOrder");
   }
 
+  /* The current position of the cursor. */
   QPoint cursorPos() {
     return kwinpp_internal::call_kwin_func<QPoint>(
         "workspace", "WorkspaceWrapper.cursorPos");
-  } /* The current position of the cursor. */
+  }
 
   /* The current virtual desktop on the active screen. */
   KWin::VirtualDesktop *currentDesktop() {
