@@ -20,6 +20,8 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
+#include <dlfcn.h>
+
 #ifdef KWINPP_NO_QT
 #include <unordered_map>
 #else
@@ -238,6 +240,60 @@ function poll() {
 }
 poll();
 )KWINPP";
+
+#define DBUS_FUNCS                                                             \
+  X(dbus_connection_has_messages_to_send)                                      \
+  X(dbus_connection_read_write)                                                \
+  X(dbus_message_new_method_call)                                              \
+  X(dbus_bus_request_name)                                                     \
+  X(dbus_connection_send)                                                      \
+  X(dbus_message_is_method_call)                                               \
+  X(dbus_connection_get_unix_fd)                                               \
+  X(dbus_message_unref)                                                        \
+  X(dbus_bus_get_private)                                                      \
+  X(dbus_message_ref)                                                          \
+  X(dbus_connection_set_exit_on_disconnect)                                    \
+  X(dbus_error_free)                                                           \
+  X(dbus_connection_register_object_path)                                      \
+  X(dbus_message_append_args)                                                  \
+  X(dbus_error_init)                                                           \
+  X(dbus_connection_send_with_reply_and_block)                                 \
+  X(dbus_threads_init_default)                                                 \
+  X(dbus_message_get_args)                                                     \
+  X(dbus_connection_dispatch)                                                  \
+  X(dbus_message_new_method_return)
+
+static struct {
+  void *lib = nullptr;
+#define X(name) decltype(::name) *name = nullptr;
+  DBUS_FUNCS
+#undef X
+} dbus;
+
+#define dbus_connection_has_messages_to_send                                   \
+  dbus.dbus_connection_has_messages_to_send
+#define dbus_connection_read_write dbus.dbus_connection_read_write
+#define dbus_message_new_method_call dbus.dbus_message_new_method_call
+#define dbus_bus_request_name dbus.dbus_bus_request_name
+#define dbus_connection_send dbus.dbus_connection_send
+#define dbus_message_is_method_call dbus.dbus_message_is_method_call
+#define dbus_connection_get_unix_fd dbus.dbus_connection_get_unix_fd
+#define dbus_message_unref dbus.dbus_message_unref
+#define dbus_bus_get_private dbus.dbus_bus_get_private
+#define dbus_message_ref dbus.dbus_message_ref
+#define dbus_connection_set_exit_on_disconnect                                 \
+  dbus.dbus_connection_set_exit_on_disconnect
+#define dbus_error_free dbus.dbus_error_free
+#define dbus_connection_register_object_path                                   \
+  dbus.dbus_connection_register_object_path
+#define dbus_message_append_args dbus.dbus_message_append_args
+#define dbus_error_init dbus.dbus_error_init
+#define dbus_connection_send_with_reply_and_block                              \
+  dbus.dbus_connection_send_with_reply_and_block
+#define dbus_threads_init_default dbus.dbus_threads_init_default
+#define dbus_message_get_args dbus.dbus_message_get_args
+#define dbus_connection_dispatch dbus.dbus_connection_dispatch
+#define dbus_message_new_method_return dbus.dbus_message_new_method_return
 
 /* Owns a libdbus error and frees it when it goes out of scope. */
 struct DBusErrorHolder {
@@ -466,6 +522,19 @@ const std::string &writeScriptFile() {
 }
 
 void start() {
+  dbus.lib = dlopen("libdbus-1.so", RTLD_LAZY | RTLD_NOW);
+  if (!dbus.lib) {
+    throw std::runtime_error("kwinpp: dbus not found.");
+  }
+#define X(name)                                                                \
+  name = (decltype(name))dlsym(dbus.lib, #name);                               \
+  if (!name) {                                                                 \
+    throw std::runtime_error("kwinpp: function " #name                         \
+                             " not found in libdbus-1.so");                    \
+  }
+  DBUS_FUNCS
+#undef X
+
   dbus_threads_init_default();
   bridge = new Bridge();
 

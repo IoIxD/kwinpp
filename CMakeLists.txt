@@ -24,7 +24,7 @@ pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
 
 if(KWINPP_NO_QT)
   target_compile_definitions(${PROJECT_NAME} PUBLIC KWINPP_NO_QT)
-  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::DBUS)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${DBUS_INCLUDE_DIRS})
 else()
   find_package(Qt6 REQUIRED COMPONENTS Core Gui)
   target_link_libraries(${PROJECT_NAME}
