@@ -36,7 +36,6 @@ using String = std::string;
 using StringList = std::vector<std::string>;
 template <typename T> using List = std::vector<T>;
 using Uuid = std::string; // as formatted by QUuid::toString()
-using Region = std::vector<Rect>;
 enum class Edge {
   TopEdge = 0x1,
   LeftEdge = 0x2,
@@ -147,6 +146,9 @@ private:
   double wd = 0.0;
   double ht = 0.0;
 };
+
+using Region = std::vector<Rect>;
+
 #endif
 
 } // namespace KWin

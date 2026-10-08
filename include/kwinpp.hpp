@@ -12,10 +12,6 @@
 #include <vector>
 
 #include "kwinpp_types.hpp"
-
-#else
-
-namespace KWin {} // namespace KWin
 #endif
 
 #include "kwinppi.hpp"
