@@ -15,6 +15,9 @@
 #include <QStringList>
 #include <QUuid>
 #include <Qt>
+#else
+#include <string>
+#include <vector>
 #endif
 
 namespace KWin {
