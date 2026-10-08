@@ -2,10 +2,7 @@
 #include "kwinppi.hpp"
 
 #include <QHash>
-#include <QJsonDocument>
 #include <QQueue>
-#include <QJsonArray>
-#include <QJsonObject>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -18,7 +15,6 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
-#include <variant>
 #include <vector>
 
 #include <cerrno>
@@ -281,7 +277,7 @@ public:
   DBusMessage *pendingPoll = nullptr;
   std::chrono::steady_clock::time_point pendingPollSince;
   QQueue<QString> requests;
-  QHash<qint64, QJsonObject> results;
+  QHash<qint64, nlohmann::json> results;
 
   /* Queues a request for the script. Call from any thread, with mutex held. */
   void submit(const QString &request) {
@@ -359,11 +355,14 @@ private:
       if (!dbus_message_get_args(message, error, DBUS_TYPE_STRING, &json,
                                  DBUS_TYPE_INVALID))
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-      const QJsonObject reply =
-          QJsonDocument::fromJson(QByteArray(json)).object();
+      nlohmann::json reply = nlohmann::json::parse(json, nullptr, false);
       sendReply(message, nullptr);
+      if (!reply.is_object() || !reply.contains("id") ||
+          !reply["id"].is_number_integer())
+        return DBUS_HANDLER_RESULT_HANDLED;
+      const qint64 id = reply["id"].get<qint64>();
       std::lock_guard lock(mutex);
-      results.insert(reply["id"].toInteger(), reply);
+      results.insert(id, std::move(reply));
       cv.notify_all();
       return DBUS_HANDLER_RESULT_HANDLED;
     }
@@ -522,73 +521,11 @@ std::mutex handleMutex;
 std::unordered_map<std::string, void *> handles;
 std::unordered_map<const void *, std::string> handleRefs;
 
-using kwinpp_internal::Json;
-using kwinpp_internal::JsonArray;
-using kwinpp_internal::JsonObject;
-
-QJsonValue toQt(const Json &json) {
-  return std::visit(
-      [](const auto &v) -> QJsonValue {
-        using V = std::decay_t<decltype(v)>;
-        if constexpr (std::is_same_v<V, std::nullptr_t>) {
-          return QJsonValue::Null;
-        } else if constexpr (std::is_same_v<V, std::string>) {
-          return QString::fromStdString(v);
-        } else if constexpr (std::is_same_v<V, JsonArray>) {
-          QJsonArray array;
-          for (const Json &e : v)
-            array.append(toQt(e));
-          return array;
-        } else if constexpr (std::is_same_v<V, JsonObject>) {
-          QJsonObject object;
-          for (const auto &[key, e] : v)
-            object.insert(QString::fromStdString(key), toQt(e));
-          return object;
-        } else if constexpr (std::is_same_v<V, std::int64_t>) {
-          return qint64(v);
-        } else {
-          return v; // bool or double
-        }
-      },
-      json.value);
-}
-
-Json fromQt(const QJsonValue &value) {
-  switch (value.type()) {
-  case QJsonValue::Bool:
-    return Json(value.toBool());
-  case QJsonValue::Double: {
-    // JSON has one number type; keep whole numbers as integers
-    const double d = value.toDouble();
-    if (std::trunc(d) == d && std::abs(d) < 0x1p63)
-      return Json(static_cast<std::int64_t>(d));
-    return Json(d);
-  }
-  case QJsonValue::String:
-    return Json(value.toString().toStdString());
-  case QJsonValue::Array: {
-    JsonArray array;
-    for (const QJsonValue &e : value.toArray())
-      array.push_back(fromQt(e));
-    return Json(std::move(array));
-  }
-  case QJsonValue::Object: {
-    JsonObject object;
-    const QJsonObject o = value.toObject();
-    for (auto it = o.begin(); it != o.end(); ++it)
-      object.emplace_back(it.key().toStdString(), fromQt(it.value()));
-    return Json(std::move(object));
-  }
-  default:
-    return Json();
-  }
-}
-
 } // namespace
 
 namespace kwinpp_internal {
 
-void *handle_for(const std::string &ref, void *(*create)()) {
+void *handle_for_nongeneric(const std::string &ref, void *(*create)()) {
   std::lock_guard lock(handleMutex);
   void *&handle = handles[ref];
   if (!handle) {
@@ -620,38 +557,40 @@ void release_handle(const void *handle) noexcept {
   if (startError || !bridge)
     return;
   try {
-    const QJsonObject request{{"release", QString::fromStdString(ref)}};
+    const nlohmann::json request{{"release", ref}};
     std::lock_guard lock(bridge->mutex);
-    bridge->submit(QString::fromUtf8(
-        QJsonDocument(request).toJson(QJsonDocument::Compact)));
+    bridge->submit(QString::fromStdString(request.dump()));
   } catch (...) {
     // destructors can't throw, and a leaked object in KWin is harmless
   }
 }
 
-Json call_kwin_func_raw(const std::string &target, const std::string &func,
-                        JsonArray args) {
+nlohmann::json call_kwin_func_raw(const std::string &target,
+                                  const std::string &func,
+                                  std::vector<nlohmann::json> args) {
   if (startError)
     throw std::runtime_error(*startError);
 
   static std::atomic<qint64> nextId = 0;
   const qint64 id = nextId++;
-  const QJsonObject request{{"id", id},
-                            {"target", QString::fromStdString(target)},
-                            {"func", QString::fromStdString(func)},
-                            {"args", toQt(Json(std::move(args)))}};
+  const nlohmann::json request{{"id", id},
+                               {"target", target},
+                               {"func", func},
+                               {"args", std::move(args)}};
 
   std::unique_lock lock(bridge->mutex);
-  bridge->submit(
-      QString::fromUtf8(QJsonDocument(request).toJson(QJsonDocument::Compact)));
+  bridge->submit(QString::fromStdString(request.dump()));
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT,
                            [id] { return bridge->results.contains(id); }))
     throw std::runtime_error("kwinpp: KWin didn't answer " + func);
-  const QJsonObject reply = bridge->results.take(id);
-  if (reply.contains("error"))
-    throw std::runtime_error("kwinpp: " + func + ": " +
-                             reply["error"].toString().toStdString());
-  return fromQt(reply["value"]);
+  nlohmann::json reply = bridge->results.take(id);
+  if (reply.contains("error")) {
+    const nlohmann::json &error = reply["error"];
+    throw std::runtime_error(
+        "kwinpp: " + func + ": " +
+        (error.is_string() ? error.get<std::string>() : error.dump()));
+  }
+  return reply.contains("value") ? std::move(reply["value"]) : nullptr;
 }
 
 } // namespace kwinpp_internal

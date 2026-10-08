@@ -10,6 +10,8 @@ option(KWINPP_NO_QT "Don't have functions return Qt types" ON)
 
 FILE(GLOB_RECURSE sources src/*.cpp)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/submodules/json)
+
 add_library(${PROJECT_NAME} SHARED ${sources})
 
 find_package(PkgConfig REQUIRED)
@@ -31,5 +33,7 @@ endif()
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# kwinppi.hpp (included by kwinpp.hpp) uses nlohmann::json, so users need it
+target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json::nlohmann_json)
 
 add_subdirectory(examples)
