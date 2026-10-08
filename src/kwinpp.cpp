@@ -32,7 +32,7 @@ namespace KWin {
 WorkspaceWrapper workspace;
 }
 
-namespace {
+namespace kwinpp {
 
 constexpr auto SERVICE = "net.ioi_xd.kwinpp";
 constexpr auto PATH = "/net/ioi_xd/kwinpp";
@@ -482,13 +482,11 @@ void callKWin(const char *path, const char *interface, const char *method,
       bridge->connection, message, DBUS_TIMEOUT_USE_DEFAULT, error);
   dbus_message_unref(message);
   if (!reply)
-    throw std::runtime_error("kwinpp: " + std::string(method) + ": " +
-                             error.message());
+    throw std::runtime_error("" + std::string(method) + ": " + error.message());
   if (result && !dbus_message_get_args(reply, error, DBUS_TYPE_INT32, result,
                                        DBUS_TYPE_INVALID)) {
     dbus_message_unref(reply);
-    throw std::runtime_error("kwinpp: " + std::string(method) + ": " +
-                             error.message());
+    throw std::runtime_error("" + std::string(method) + ": " + error.message());
   }
   dbus_message_unref(reply);
 }
@@ -502,7 +500,7 @@ const std::string &writeScriptFile() {
       std::string(dir && *dir ? dir : "/tmp") + "/kwinpp-XXXXXX.js";
   const int fd = mkstemps(path.data(), 3);
   if (fd < 0)
-    throw std::runtime_error("kwinpp: couldn't create the KWin script file");
+    throw std::runtime_error("couldn't create the KWin script file");
   atexit([] { unlink(path.c_str()); });
 
   const std::string_view script = KWIN_SCRIPT;
@@ -513,7 +511,7 @@ const std::string &writeScriptFile() {
       continue;
     if (n < 0) {
       close(fd);
-      throw std::runtime_error("kwinpp: couldn't write the KWin script");
+      throw std::runtime_error("couldn't write the KWin script");
     }
     written += n;
   }
@@ -524,13 +522,12 @@ const std::string &writeScriptFile() {
 void start() {
   dbus.lib = dlopen("libdbus-1.so", RTLD_LAZY | RTLD_NOW);
   if (!dbus.lib) {
-    throw std::runtime_error("kwinpp: dbus not found.");
+    throw std::runtime_error("dbus not found.");
   }
 #define X(name)                                                                \
   name = (decltype(name))dlsym(dbus.lib, #name);                               \
   if (!name) {                                                                 \
-    throw std::runtime_error("kwinpp: function " #name                         \
-                             " not found in libdbus-1.so");                    \
+    throw std::runtime_error("function " #name " not found in libdbus-1.so");  \
   }
   DBUS_FUNCS
 #undef X
@@ -542,23 +539,23 @@ void start() {
   // a private connection, so the program's own use of the bus isn't affected
   bridge->connection = dbus_bus_get_private(DBUS_BUS_SESSION, error);
   if (!bridge->connection)
-    throw std::runtime_error("kwinpp: couldn't connect to the session bus: " +
+    throw std::runtime_error("couldn't connect to the session bus: " +
                              error.message());
   dbus_connection_set_exit_on_disconnect(bridge->connection, false);
 
   if (dbus_bus_request_name(bridge->connection, SERVICE,
                             DBUS_NAME_FLAG_DO_NOT_QUEUE,
                             error) != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
-    throw std::runtime_error("kwinpp: couldn't register " +
-                             std::string(SERVICE) + " on the session bus");
+    throw std::runtime_error("couldn't register " + std::string(SERVICE) +
+                             " on the session bus");
   static const DBusObjectPathVTable vtable = {nullptr, &Bridge::handleMessage};
   if (!dbus_connection_register_object_path(bridge->connection, PATH, &vtable,
                                             bridge))
-    throw std::runtime_error("kwinpp: couldn't register " + std::string(PATH));
+    throw std::runtime_error("couldn't register " + std::string(PATH));
 
   bridge->wakeFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (bridge->wakeFd < 0)
-    throw std::runtime_error("kwinpp: couldn't create an eventfd");
+    throw std::runtime_error("couldn't create an eventfd");
 
   const std::string &scriptPath = writeScriptFile();
 
@@ -568,7 +565,7 @@ void start() {
   callKWin("/Scripting", "org.kde.kwin.Scripting", "loadScript",
            {scriptPath, PLUGIN_NAME}, &id);
   if (id < 0)
-    throw std::runtime_error("kwinpp: KWin refused to load the script");
+    throw std::runtime_error("KWin refused to load the script");
   callKWin(("/Scripting/Script" + std::to_string(id)).c_str(),
            "org.kde.kwin.Script", "run");
 
@@ -577,7 +574,7 @@ void start() {
 
   std::unique_lock lock(bridge->mutex);
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT, [] { return bridge->ready; }))
-    throw std::runtime_error("kwinpp: the KWin script never connected");
+    throw std::runtime_error("the KWin script never connected");
 }
 
 /* Why start() failed, if it did. Exceptions can't escape a constructor
@@ -597,7 +594,10 @@ std::mutex handleMutex;
 std::unordered_map<std::string, void *> handles;
 std::unordered_map<const void *, std::string> handleRefs;
 
-} // namespace
+std::optional<std::string> get_exception() { return startError; };
+} // namespace kwinpp
+
+using namespace kwinpp;
 
 namespace kwinpp_internal {
 
@@ -658,7 +658,7 @@ nlohmann::json call_kwin_func_raw(const std::string &target,
   bridge->submit(request.dump());
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT,
                            [id] { return bridge->results.contains(id); }))
-    throw std::runtime_error("kwinpp: KWin didn't answer " + func);
+    throw std::runtime_error("KWin didn't answer " + func);
 #ifdef KWINPP_NO_QT
   nlohmann::json reply = bridge->results.at(id);
 #else

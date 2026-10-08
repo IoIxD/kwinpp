@@ -10,7 +10,7 @@ option(KWINPP_NO_QT "Don't have functions return Qt types" ON)
 if(KWINPP_NO_QT)
   set(CMAKE_CXX_STANDARD 20)
 else()
-  set(CMAKE_CXX_STANDARD 98)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 FILE(GLOB_RECURSE sources src/*.cpp)

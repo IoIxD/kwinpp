@@ -4,6 +4,11 @@
 using namespace KWin;
 
 int main() {
+  if (kwinpp::get_exception()) {
+    std::println("cannot load example; {}", kwinpp::get_exception().value());
+    return 1;
+  }
+
   Window *win = workspace.activeWindow();
 
   auto geom = win->bufferGeometry();

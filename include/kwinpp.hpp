@@ -9,12 +9,21 @@
 
 #ifdef KWINPP_NO_QT
 #include <string>
-#include <vector>
 
 #include "kwinpp_types.hpp"
 #endif
 
 #include "kwinppi.hpp"
+
+namespace kwinpp {
+/*
+ * if kwinpp is unable to load, this returns the resulting exception, and you
+ * should either throw it or disable the kwin codepaths.
+ *
+ * otherwise it returns {}.
+ */
+std::optional<std::string> get_exception();
+}; // namespace kwinpp
 
 namespace KWin {
 
