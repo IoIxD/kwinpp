@@ -228,6 +228,18 @@ Ret call_kwin_func(const std::string &target, const std::string &func,
   return from_json<Ret>(call_kwin_func_raw(target, func, {to_json(args)...}));
 }
 
+/* Reads/writes the property field of the object referenced by target inside
+ * KWin. Throws like call_kwin_func. */
+template <typename T>
+T get_kwin_field(const std::string &target, const std::string &field) {
+  return from_json<T>(call_kwin_func_raw(target, "$get", {field}));
+}
+template <typename T>
+void set_kwin_field(const std::string &target, const std::string &field,
+                    const T &value) {
+  call_kwin_func_raw(target, "$set", {field, to_json(value)});
+}
+
 /* Called with the signal's arguments, as sent by the script. */
 using SignalHandler = std::function<void(const nlohmann::json &args)>;
 

@@ -100,5 +100,46 @@ int main() {
   std::println("colorScheme: {}", win->colorScheme().toStdString());
 #endif
 
+  std::println("opacity: {}", win->opacity());
+  std::println("skipsCloseAnimation: {}", win->skipsCloseAnimation());
+  std::println("fullScreen: {}", win->fullScreen());
+  for (VirtualDesktop *desktop : win->desktops()) {
+#ifdef KWINPP_NO_QT
+    std::println("desktops: {}", desktop->name());
+#else
+    std::println("desktops: {}", desktop->name().toStdString());
+#endif
+    delete desktop;
+  }
+  std::println("onAllDesktops: {}", win->onAllDesktops());
+  for (const String &activity : win->activities()) {
+#ifdef KWINPP_NO_QT
+    std::println("activities: {}", activity);
+#else
+    std::println("activities: {}", activity.toStdString());
+#endif
+  }
+  std::println("skipTaskbar: {}", win->skipTaskbar());
+  std::println("skipPager: {}", win->skipPager());
+  std::println("skipSwitcher: {}", win->skipSwitcher());
+  std::println("keepAbove: {}", win->keepAbove());
+  std::println("keepBelow: {}", win->keepBelow());
+  std::println("shade: {}", win->shade());
+  std::println("minimized: {}", win->minimized());
+  std::println("demandsAttention: {}", win->demandsAttention());
+  auto frame = win->frameGeometry();
+  std::println("frameGeometry: ({},{},{},{})", frame.x(), frame.y(),
+               frame.width(), frame.height());
+  std::println("noBorder: {}", win->noBorder());
+  Tile *tile = win->tile();
+  if (tile) {
+    auto rel = tile->relativeGeometry();
+    std::println("tile: ({},{},{},{})", rel.x(), rel.y(), rel.width(),
+                 rel.height());
+    delete tile;
+  } else {
+    std::println("tile: none");
+  }
+
   delete win;
 }

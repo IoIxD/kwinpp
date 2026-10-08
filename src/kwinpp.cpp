@@ -144,17 +144,14 @@ function decode(v) {
     return v; // rects, points and sizes are passed as plain objects
 }
 
-const api = {"$connect": connectSignal};
+const api = {
+    "$connect": connectSignal,
+    "$get": (obj, field) => obj[field],
+    "$set": (obj, field, value) => { obj[field] = value; },
+};
 function getters(cls, names) {
     for (const name of names)
         api[cls + "." + name] = (obj) => obj[name];
-}
-function properties(cls, names) {
-    getters(cls, names);
-    for (const name of names) {
-        const setter = "set" + name[0].toUpperCase() + name.slice(1);
-        api[cls + "." + setter] = (obj, value) => { obj[name] = value; };
-    }
 }
 function methods(cls, names) {
     for (const name of names)
@@ -167,7 +164,6 @@ getters("WorkspaceWrapper", [
     "screens", "activities", "virtualScreenSize", "virtualScreenGeometry",
     "stackingOrder", "cursorPos",
 ]);
-properties("WorkspaceWrapper", ["currentDesktop", "activeWindow", "currentActivity"]);
 methods("WorkspaceWrapper", [
     "slotSwitchDesktopNext", "slotSwitchDesktopPrevious", "slotSwitchDesktopRight",
     "slotSwitchDesktopLeft", "slotSwitchDesktopUp", "slotSwitchDesktopDown",
@@ -200,7 +196,6 @@ methods("WorkspaceWrapper", [
 ]);
 
 getters("VirtualDesktop", ["id", "x11DesktopNumber"]);
-properties("VirtualDesktop", ["name"]);
 
 getters("Output", [
     "geometry", "devicePixelRatio", "name", "manufacturer", "model", "serialNumber",
@@ -222,12 +217,6 @@ getters("Window", [
     "hasApplicationMenu", "applicationMenuActive", "unresponsive", "colorScheme",
     "hidden", "inputMethod",
 ]);
-properties("Window", [
-    "opacity", "skipsCloseAnimation", "fullScreen", "desktops", "onAllDesktops",
-    "activities", "skipTaskbar", "skipPager", "skipSwitcher", "keepAbove",
-    "keepBelow", "shade", "minimized", "demandsAttention", "frameGeometry",
-    "noBorder", "tile",
-]);
 methods("Window", ["closeWindow", "setMaximize"]);
 
 getters("TileManager", ["rootTile"]);
@@ -237,7 +226,6 @@ getters("Tile", [
     "absoluteGeometry", "absoluteGeometryInScreen", "positionInLayout", "parent",
     "tiles", "windows", "isLayout", "canBeRemoved",
 ]);
-properties("Tile", ["relativeGeometry", "padding"]);
 methods("Tile", ["resizeByPixels"]);
 
 function handle(request) {

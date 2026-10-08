@@ -126,31 +126,28 @@ public:
 
   /* The current virtual desktop on the active screen. */
   KWin::VirtualDesktop *currentDesktop() {
-    return kwinpp_internal::call_kwin_func<KWin::VirtualDesktop *>(
-        "workspace", "WorkspaceWrapper.currentDesktop");
+    return kwinpp_internal::get_kwin_field<KWin::VirtualDesktop *>(
+        "workspace", "currentDesktop");
   }
   /* Set the current virtual desktop on the active screen. */
   void setCurrentDesktop(KWin::VirtualDesktop *val) {
-    return kwinpp_internal::call_kwin_func<void>(
-        "workspace", "WorkspaceWrapper.setCurrentDesktop", val);
+    return kwinpp_internal::set_kwin_field("workspace", "currentDesktop", val);
   }
 
   KWin::Window *activeWindow() {
-    return kwinpp_internal::call_kwin_func<KWin::Window *>(
-        "workspace", "WorkspaceWrapper.activeWindow");
+    return kwinpp_internal::get_kwin_field<KWin::Window *>("workspace",
+                                                           "activeWindow");
   }
   void setActiveWindow(KWin::Window *val) {
-    return kwinpp_internal::call_kwin_func<void>(
-        "workspace", "WorkspaceWrapper.setActiveWindow", val);
+    return kwinpp_internal::set_kwin_field("workspace", "activeWindow", val);
   }
 
   String currentActivity() {
-    return kwinpp_internal::call_kwin_func<String>(
-        "workspace", "WorkspaceWrapper.currentActivity");
+    return kwinpp_internal::get_kwin_field<String>("workspace",
+                                                   "currentActivity");
   }
   void setCurrentActivity(String val) {
-    return kwinpp_internal::call_kwin_func<void>(
-        "workspace", "WorkspaceWrapper.setCurrentActivity", val);
+    return kwinpp_internal::set_kwin_field("workspace", "currentActivity", val);
   }
 
   kwinpp::Connection
@@ -649,12 +646,12 @@ public:
   }
 
   String name() {
-    return kwinpp_internal::call_kwin_func<String>(
-        kwinpp_internal::ref_of(this), "VirtualDesktop.name");
+    return kwinpp_internal::get_kwin_field<String>(
+        kwinpp_internal::ref_of(this), "name");
   }
   void setName(String val) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "VirtualDesktop.setName", val);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "name", val);
   }
 
   kwinpp::Connection onNameChanged(std::function<void()> callback) {
@@ -1134,13 +1131,7 @@ public:
     return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
                                                  "Window.closeable");
   }
-#ifndef KWINPP_NO_QT
-  /* Always a null icon: icons can't be serialized from inside a KWin script. */
-  QIcon icon() const {
-    return kwinpp_internal::call_kwin_func<QIcon>(kwinpp_internal::ref_of(this),
-                                                  "Window.icon");
-  }
-#endif
+
   /* Whether the Window can be shaded. The property is evaluated each time it is
    * invoked. Because of that there is no notify signal. */
   bool shadeable() const {
@@ -1315,127 +1306,127 @@ public:
   }
 
   double opacity() {
-    return kwinpp_internal::call_kwin_func<double>(
-        kwinpp_internal::ref_of(this), "Window.opacity");
+    return kwinpp_internal::get_kwin_field<double>(
+        kwinpp_internal::ref_of(this), "opacity");
   }
   void setOpacity(double value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setOpacity", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "opacity", value);
   }
   /* Whether the window does not want to be animated on window close. There are
    * legit reasons for this like a screenshot application which does not want
    * it's window being captured. */
   bool skipsCloseAnimation() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.skipsCloseAnimation");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "skipsCloseAnimation");
   }
   void setSkipsCloseAnimation(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setSkipsCloseAnimation", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "skipsCloseAnimation", value);
   }
   /* Whether this Window is fullScreen. A Window might either be fullScreen due
    * to the _NET_WM property or through a legacy support hack. The fullScreen
    * state can only be changed if the Window does not use the legacy hack. To be
    * sure whether the state changed, connect to the notify signal. */
   bool fullScreen() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.fullScreen");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "fullScreen");
   }
   void setFullScreen(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setFullScreen", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "fullScreen", value);
   }
   /* The virtual desktops this client is on. If it's on all desktops, the list
    * is empty. */
   List<KWin::VirtualDesktop *> desktops() {
-    return kwinpp_internal::call_kwin_func<List<KWin::VirtualDesktop *>>(
-        kwinpp_internal::ref_of(this), "Window.desktops");
+    return kwinpp_internal::get_kwin_field<List<KWin::VirtualDesktop *>>(
+        kwinpp_internal::ref_of(this), "desktops");
   }
   void setDesktops(List<KWin::VirtualDesktop *> value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setDesktops", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "desktops", value);
   }
   /* Whether the Window is on all desktops. That is desktop is -1. */
   bool onAllDesktops() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.onAllDesktops");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "onAllDesktops");
   }
   void setOnAllDesktops(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setOnAllDesktops", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "onAllDesktops", value);
   }
   /* The activities this client is on. If it's on all activities the property is
    * empty. */
   StringList activities() {
-    return kwinpp_internal::call_kwin_func<StringList>(
-        kwinpp_internal::ref_of(this), "Window.activities");
+    return kwinpp_internal::get_kwin_field<StringList>(
+        kwinpp_internal::ref_of(this), "activities");
   }
   void setActivities(StringList value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setActivities", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "activities", value);
   }
   /* Indicates that the window should not be included on a taskbar. */
   bool skipTaskbar() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.skipTaskbar");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "skipTaskbar");
   }
   void setSkipTaskbar(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setSkipTaskbar", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "skipTaskbar", value);
   }
   /* Indicates that the window should not be included on a Pager. */
   bool skipPager() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.skipPager");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "skipPager");
   }
   void setSkipPager(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setSkipPager", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "skipPager", value);
   }
   /* Whether the Window should be excluded from window switching effects. */
   bool skipSwitcher() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.skipSwitcher");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "skipSwitcher");
   }
   void setSkipSwitcher(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setSkipSwitcher", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "skipSwitcher", value);
   }
   /* Whether the Window is set to be kept above other windows. */
   bool keepAbove() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.keepAbove");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "keepAbove");
   }
   void setKeepAbove(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setKeepAbove", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "keepAbove", value);
   }
   /* Whether the Window is set to be kept below other windows. */
   bool keepBelow() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.keepBelow");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "keepBelow");
   }
   void setKeepBelow(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setKeepBelow", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "keepBelow", value);
   }
   /* Whether the Window is shaded. */
   bool shade() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.shade");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "shade");
   }
   void setShade(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setShade", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "shade", value);
   }
   /* Whether the Window is minimized. */
   bool minimized() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.minimized");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "minimized");
   }
   void setMinimized(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setMinimized", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "minimized", value);
   }
   /* Whether window state _NET_WM_STATE_DEMANDS_ATTENTION is set. This state
    * indicates that some action in or with the window happened. For example, it
@@ -1445,44 +1436,44 @@ public:
    * It should be unset by the Window Manager when it decides the window got the
    * required attention (usually, that it got activated). */
   bool demandsAttention() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.demandsAttention");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "demandsAttention");
   }
   void setDemandsAttention(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setDemandsAttention", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "demandsAttention", value);
   }
   /* The geometry of this Window. Be aware that depending on resize mode the
    * frameGeometryChanged signal might be emitted at each resize step or only at
    * the end of the resize operation. */
   RectF frameGeometry() {
-    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
-                                                  "Window.frameGeometry");
+    return kwinpp_internal::get_kwin_field<RectF>(kwinpp_internal::ref_of(this),
+                                                  "frameGeometry");
   }
   void setFrameGeometry(RectF value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Window.setFrameGeometry", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "frameGeometry", value);
   }
   /* Whether the window has a decoration or not. This property is not allowed to
    * be set by applications themselves. The decision whether a window has a
    * border or not belongs to the window manager. If this property gets abused
    * by application developers, it will be removed again. */
   bool noBorder() {
-    return kwinpp_internal::call_kwin_func<bool>(kwinpp_internal::ref_of(this),
-                                                 "Window.noBorder");
+    return kwinpp_internal::get_kwin_field<bool>(kwinpp_internal::ref_of(this),
+                                                 "noBorder");
   }
   void setNoBorder(bool value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setNoBorder", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "noBorder", value);
   }
   /* The Tile this window is associated to, if any */
   KWin::Tile *tile() {
-    return kwinpp_internal::call_kwin_func<KWin::Tile *>(
-        kwinpp_internal::ref_of(this), "Window.tile");
+    return kwinpp_internal::get_kwin_field<KWin::Tile *>(
+        kwinpp_internal::ref_of(this), "tile");
   }
   void setTile(KWin::Tile *value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Window.setTile", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "tile", value);
   }
 
   kwinpp::Connection onStackingOrderChanged(std::function<void()> callback) {
@@ -1888,20 +1879,20 @@ public:
   }
 
   RectF relativeGeometry() {
-    return kwinpp_internal::call_kwin_func<RectF>(kwinpp_internal::ref_of(this),
-                                                  "Tile.relativeGeometry");
+    return kwinpp_internal::get_kwin_field<RectF>(kwinpp_internal::ref_of(this),
+                                                  "relativeGeometry");
   }
   void setRelativeGeometry(RectF value) {
-    return kwinpp_internal::call_kwin_func<void>(
-        kwinpp_internal::ref_of(this), "Tile.setRelativeGeometry", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "relativeGeometry", value);
   }
   double padding() {
-    return kwinpp_internal::call_kwin_func<double>(
-        kwinpp_internal::ref_of(this), "Tile.padding");
+    return kwinpp_internal::get_kwin_field<double>(
+        kwinpp_internal::ref_of(this), "padding");
   }
   void setPadding(double value) {
-    return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
-                                                 "Tile.setPadding", value);
+    return kwinpp_internal::set_kwin_field(kwinpp_internal::ref_of(this),
+                                           "padding", value);
   }
 
   kwinpp::Connection onRelativeGeometryChanged(std::function<void()> callback) {
