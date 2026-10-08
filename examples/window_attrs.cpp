@@ -16,9 +16,16 @@ int main() {
   std::println("y: {}", win->y());
   std::println("width: {}", win->width());
   std::println("height: {}", win->height());
+#ifdef KWINPP_NO_QT
   std::println("resourceName: {}", win->resourceName());
   std::println("resourceClass: {}", win->resourceClass());
   std::println("windowRole: {}", win->windowRole());
+#else
+  std::println("resourceName: {}", win->resourceName().toStdString());
+  std::println("resourceClass: {}", win->resourceClass().toStdString());
+  std::println("windowRole: {}", win->windowRole().toStdString());
+#endif
+
   std::println("desktopWindow: {}", win->desktopWindow());
   std::println("dock: {}", win->dock());
   std::println("toolbar: {}", win->toolbar());
@@ -41,7 +48,11 @@ int main() {
   std::println("deleted: {}", win->deleted());
   std::println("popupWindow: {}", win->popupWindow());
   std::println("outline: {}", win->outline());
+#ifdef KWINPP_NO_QT
   std::println("internalId: {}", win->internalId());
+#else
+  std::println("internalId: {}", win->internalId().toString().toStdString());
+#endif
   std::println("pid: {}", win->pid());
   std::println("stackingOrder: {}", win->stackingOrder());
   std::println("fullScreenable: {}", win->fullScreenable());
@@ -50,7 +61,11 @@ int main() {
   std::println("shadeable: {}", win->shadeable());
   std::println("minimizable: {}", win->minimizable());
   std::println("specialWindow: {}", win->specialWindow());
+#ifdef KWINPP_NO_QT
   std::println("caption: {}", win->caption());
+#else
+  std::println("caption: {}", win->caption().toStdString());
+#endif
   std::println("minSize: ({}, {})", win->minSize().width(),
                win->minSize().height());
   std::println("maxSize: ({}, {})", win->maxSize().width(),
@@ -66,11 +81,19 @@ int main() {
   std::println("moveable: {}", win->moveable());
   std::println("moveableAcrossScreens: {}", win->moveableAcrossScreens());
   std::println("resizeable: {}", win->resizeable());
+#ifdef KWINPP_NO_QT
   std::println("desktopFileName: {}", win->desktopFileName());
+#else
+  std::println("desktopFileName: {}", win->desktopFileName().toStdString());
+#endif
   std::println("hasApplicationMenu: {}", win->hasApplicationMenu());
   std::println("applicationMenuActive: {}", win->applicationMenuActive());
   std::println("unresponsive: {}", win->unresponsive());
+#ifdef KWINPP_NO_QT
   std::println("colorScheme: {}", win->colorScheme());
+#else
+  std::println("colorScheme: {}", win->colorScheme().toStdString());
+#endif
 
   delete win;
 }

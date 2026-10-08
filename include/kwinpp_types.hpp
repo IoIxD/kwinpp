@@ -1,7 +1,42 @@
 #pragma once
 
-namespace KWin {
+#ifndef KWINPP_NO_QT
+#include <QIcon>
+#include <QList>
+#include <QPalette>
+#include <QPoint>
+#include <QPointF>
+#include <QRect>
+#include <QRectF>
+#include <QRegion>
+#include <QSize>
+#include <QSizeF>
+#include <QString>
+#include <QStringList>
+#include <QUuid>
+#include <Qt>
+#endif
 
+namespace KWin {
+#ifndef KWINPP_NO_QT
+using String = QString;
+using StringList = QStringList;
+template <typename T> using List = QList<T>;
+using Uuid = QUuid;
+using Region = QRegion;
+using Point = QPoint;
+using PointF = QPointF;
+using Size = QSize;
+using SizeF = QSizeF;
+using Rect = QRect;
+using RectF = QRectF;
+using Edge = Qt::Edge;
+#else
+using String = std::string;
+using StringList = std::vector<std::string>;
+template <typename T> using List = std::vector<T>;
+using Uuid = std::string; // as formatted by QUuid::toString()
+using Region = std::vector<Rect>;
 enum class Edge {
   TopEdge = 0x1,
   LeftEdge = 0x2,
@@ -112,5 +147,6 @@ private:
   double wd = 0.0;
   double ht = 0.0;
 };
+#endif
 
 } // namespace KWin

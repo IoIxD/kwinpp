@@ -13,6 +13,12 @@
 
 #include <nlohmann/json.hpp>
 
+#ifndef KWINPP_NO_QT
+#include <QIcon>
+#include <QString>
+#include <QUuid>
+#endif
+
 namespace kwinpp_internal {
 
 /* get a kwin object based on the map handle*/
@@ -65,7 +71,12 @@ inline const nlohmann::json &json_member(const nlohmann::json &v,
 }
 
 template <typename T> nlohmann::json to_json(const T &v) {
+#ifdef KWINPP_NO_QT
   using U = std::remove_cvref_t<T>;
+#else
+  using U = std::remove_cv_t<std::remove_reference_t<T>>;
+#endif
+
   if constexpr (std::is_same_v<U, std::nullptr_t>) {
     return nlohmann::json();
   } else if constexpr (std::is_convertible_v<const U &, std::string_view>) {

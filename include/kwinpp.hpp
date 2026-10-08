@@ -13,43 +13,9 @@
 
 #include "kwinpp_types.hpp"
 
-namespace KWin {
-using String = std::string;
-using StringList = std::vector<std::string>;
-template <typename T> using List = std::vector<T>;
-using Uuid = std::string; // as formatted by QUuid::toString()
-using Region = std::vector<Rect>;
-} // namespace KWin
 #else
-#include <QIcon>
-#include <QList>
-#include <QPalette>
-#include <QPoint>
-#include <QPointF>
-#include <QRect>
-#include <QRectF>
-#include <QRegion>
-#include <QSize>
-#include <QSizeF>
-#include <QString>
-#include <QStringList>
-#include <QUuid>
-#include <Qt>
 
-namespace KWin {
-using String = QString;
-using StringList = QStringList;
-template <typename T> using List = QList<T>;
-using Uuid = QUuid;
-using Region = QRegion;
-using Point = QPoint;
-using PointF = QPointF;
-using Size = QSize;
-using SizeF = QSizeF;
-using Rect = QRect;
-using RectF = QRectF;
-using Edge = Qt::Edge;
-} // namespace KWin
+namespace KWin {} // namespace KWin
 #endif
 
 #include "kwinppi.hpp"

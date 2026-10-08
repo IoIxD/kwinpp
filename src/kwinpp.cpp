@@ -1,20 +1,17 @@
 #include "kwinpp.hpp"
 #include "kwinppi.hpp"
 
-#include <QHash>
-#include <QQueue>
 #include <atomic>
 #include <chrono>
-#include <cmath>
 #include <condition_variable>
 #include <cstdlib>
 #include <mutex>
 #include <optional>
+#include <queue>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include <cerrno>
@@ -22,6 +19,12 @@
 #include <poll.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
+
+#ifdef KWINPP_NO_QT
+#include <unordered_map>
+#else
+#include <QHash>
+#endif
 
 namespace KWin {
 WorkspaceWrapper workspace;
@@ -276,12 +279,16 @@ public:
   bool ready = false; // the script has polled at least once
   DBusMessage *pendingPoll = nullptr;
   std::chrono::steady_clock::time_point pendingPollSince;
-  QQueue<QString> requests;
-  QHash<qint64, nlohmann::json> results;
+  std::queue<std::string> requests;
+#ifdef KWINPP_NO_QT
+  std::unordered_map<int64_t, nlohmann::json> results;
+#else
+  QHash<int64_t, nlohmann::json> results;
+#endif
 
   /* Queues a request for the script. Call from any thread, with mutex held. */
-  void submit(const QString &request) {
-    requests.enqueue(request);
+  void submit(const std::string &request) {
+    requests.push(request);
     const uint64_t one = 1;
     (void)!write(wakeFd, &one, sizeof(one));
   }
@@ -313,7 +320,7 @@ public:
         if (pendingPoll) {
           const auto now = std::chrono::steady_clock::now();
           if (now - pendingPollSince >= KEEPALIVE)
-            replyToPoll(QString());
+            replyToPoll(std::string());
           else
             timeout = std::chrono::ceil<std::chrono::milliseconds>(
                           pendingPollSince + KEEPALIVE - now)
@@ -341,7 +348,7 @@ private:
     if (dbus_message_is_method_call(message, INTERFACE, "poll")) {
       std::lock_guard lock(mutex);
       if (pendingPoll)
-        replyToPoll(QString());
+        replyToPoll(std::string());
       pendingPoll = dbus_message_ref(message);
       pendingPollSince = std::chrono::steady_clock::now();
       ready = true;
@@ -360,9 +367,9 @@ private:
       if (!reply.is_object() || !reply.contains("id") ||
           !reply["id"].is_number_integer())
         return DBUS_HANDLER_RESULT_HANDLED;
-      const qint64 id = reply["id"].get<qint64>();
+      const int64_t id = reply["id"].get<int64_t>();
       std::lock_guard lock(mutex);
-      results.insert(id, std::move(reply));
+      results.insert_or_assign(id, std::move(reply));
       cv.notify_all();
       return DBUS_HANDLER_RESULT_HANDLED;
     }
@@ -385,16 +392,16 @@ private:
   }
 
   /* Call with mutex held and a poll pending. */
-  void replyToPoll(const QString &request) {
-    sendReply(pendingPoll, request.toUtf8().constData());
+  void replyToPoll(const std::string &request) {
+    sendReply(pendingPoll, request.data());
     dbus_message_unref(pendingPoll);
     pendingPoll = nullptr;
   }
 
   /* Hands the next request to a waiting poll. Call with mutex held. */
   void flush() {
-    if (pendingPoll && !requests.isEmpty())
-      replyToPoll(requests.dequeue());
+    if (pendingPoll && !requests.empty())
+      replyToPoll(requests.back());
   }
 };
 
@@ -559,7 +566,7 @@ void release_handle(const void *handle) noexcept {
   try {
     const nlohmann::json request{{"release", ref}};
     std::lock_guard lock(bridge->mutex);
-    bridge->submit(QString::fromStdString(request.dump()));
+    bridge->submit(request.dump());
   } catch (...) {
     // destructors can't throw, and a leaked object in KWin is harmless
   }
@@ -571,19 +578,23 @@ nlohmann::json call_kwin_func_raw(const std::string &target,
   if (startError)
     throw std::runtime_error(*startError);
 
-  static std::atomic<qint64> nextId = 0;
-  const qint64 id = nextId++;
+  static std::atomic<int64_t> nextId = 0;
+  const int64_t id = nextId++;
   const nlohmann::json request{{"id", id},
                                {"target", target},
                                {"func", func},
                                {"args", std::move(args)}};
 
   std::unique_lock lock(bridge->mutex);
-  bridge->submit(QString::fromStdString(request.dump()));
+  bridge->submit(request.dump());
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT,
                            [id] { return bridge->results.contains(id); }))
     throw std::runtime_error("kwinpp: KWin didn't answer " + func);
+#ifdef KWINPP_NO_QT
+  nlohmann::json reply = bridge->results.at(id);
+#else
   nlohmann::json reply = bridge->results.take(id);
+#endif
   if (reply.contains("error")) {
     const nlohmann::json &error = reply["error"];
     throw std::runtime_error(

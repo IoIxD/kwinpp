@@ -1,5 +1,7 @@
 FILE(GLOB examples CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
+set(CMAKE_CXX_STANDARD 23) # std::println
+
 foreach(example ${examples})
   get_filename_component(name ${example} NAME_WE)
   add_executable(${name} ${example})

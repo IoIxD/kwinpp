@@ -19,3 +19,6 @@ int main() {
   std::println("window height: {}", win->height());
 }
 ```
+
+The library dynloads the one dependency it actually has (libdbus) and, by default, uses C++20 (+ nlohmann::json) to avoid actually linking to Qt.
+However, it does support linking to Qt if one is actually building a Qt application, at which point it just needs C++98.
