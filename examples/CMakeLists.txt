@@ -7,3 +7,5 @@ foreach(example ${examples})
   add_executable(${name} ${example})
   target_link_libraries(${name} PRIVATE ${PROJECT_NAME})
 endforeach()
+
+target_link_libraries(moving_window PRIVATE SDL3)
