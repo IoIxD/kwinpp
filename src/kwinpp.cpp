@@ -5,6 +5,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -15,6 +16,7 @@
 #include <vector>
 
 #include <cerrno>
+#include <cstdio>
 #include <dbus/dbus.h>
 #include <poll.h>
 #include <sys/eventfd.h>
@@ -42,8 +44,10 @@ constexpr auto PLUGIN_NAME = "kwinpp";
 /* Loaded into KWin once. It long-polls us over D-Bus for requests
  * ({id, target, func, args}), runs the matching entry of `api` and sends
  * {id, value} or {id, error} back. {release} requests drop an object from
- * `objects` and get no answer. KWin objects never leave KWin: they're kept
- * in `objects` and we get the key they're stored under instead. */
+ * `objects` and {disconnect} requests drop a signal connection; neither gets
+ * an answer. Connected signals send us {connection, args} through emit.
+ * KWin objects never leave KWin: they're kept in `objects` and we get the
+ * key they're stored under instead. */
 const char *const KWIN_SCRIPT = R"KWINPP(
 const SERVICE = "net.ioi_xd.kwinpp";
 const PATH = "/net/ioi_xd/kwinpp";
@@ -72,6 +76,30 @@ function deref(key) {
     return obj;
 }
 
+const connections = new Map(); // id -> {obj, signal, fn}
+
+function connectSignal(obj, signal, id) {
+    const sig = obj[signal];
+    if (sig === undefined || sig === null || typeof sig.connect !== "function")
+        throw new Error("unknown signal " + signal);
+    const fn = (...args) => callDBus(SERVICE, PATH, INTERFACE, "emit",
+        JSON.stringify({connection: id, args: args.map(encode)}));
+    sig.connect(fn);
+    connections.set(id, {obj: obj, signal: signal, fn: fn});
+}
+
+function disconnectSignal(id) {
+    const c = connections.get(id);
+    if (c === undefined)
+        return;
+    connections.delete(id);
+    try {
+        c.obj[c.signal].disconnect(c.fn);
+    } catch (e) {
+        // the object is already gone
+    }
+}
+
 // Forgets the object stored under key, so KWin can free it.
 function release(key) {
     const obj = objects.get(key);
@@ -79,6 +107,9 @@ function release(key) {
         return;
     objects.delete(key);
     keys.delete(obj);
+    for (const [id, c] of connections)
+        if (c.obj === obj)
+            disconnectSignal(id);
 }
 
 function encode(v) {
@@ -113,7 +144,7 @@ function decode(v) {
     return v; // rects, points and sizes are passed as plain objects
 }
 
-const api = {};
+const api = {"$connect": connectSignal};
 function getters(cls, names) {
     for (const name of names)
         api[cls + "." + name] = (obj) => obj[name];
@@ -217,6 +248,10 @@ function handle(request) {
         release(req.release);
         return;
     }
+    if ("disconnect" in req) { // not answered either
+        disconnectSignal(req.disconnect);
+        return;
+    }
     let reply;
     try {
         const fn = api[req.func];
@@ -314,6 +349,7 @@ constexpr auto INTROSPECTION =
   <interface name="net.ioi_xd.kwinpp">
     <method name="poll"><arg direction="out" type="s"/></method>
     <method name="result"><arg direction="in" type="s"/></method>
+    <method name="emit"><arg direction="in" type="s"/></method>
   </interface>
 </node>
 )";
@@ -342,6 +378,17 @@ public:
   QHash<int64_t, nlohmann::json> results;
 #endif
 
+  /* Signal connections, by id. Guarded by signalMutex rather than mutex so
+   * callbacks can be looked up while a call is waiting on KWin. */
+  struct Handler {
+    std::string target;
+    std::shared_ptr<const kwinpp_internal::SignalHandler> handler;
+  };
+  std::mutex signalMutex;
+  std::condition_variable signalCv;
+  std::unordered_map<uint64_t, Handler> handlers;
+  std::queue<nlohmann::json> emitted; // {connection, args}, not run yet
+
   /* Queues a request for the script. Call from any thread, with mutex held. */
   void submit(const std::string &request) {
     requests.push(request);
@@ -352,6 +399,33 @@ public:
   static DBusHandlerResult handleMessage(DBusConnection *, DBusMessage *message,
                                          void *data) {
     return static_cast<Bridge *>(data)->handle(message);
+  }
+
+  /* Runs the callbacks for emitted signals, in order. Callbacks get a thread
+   * of their own because they'll usually call back into KWin, which has to
+   * go through run(). Never returns. */
+  void runSignals() {
+    for (;;) {
+      nlohmann::json signal;
+      std::shared_ptr<const kwinpp_internal::SignalHandler> handler;
+      {
+        std::unique_lock lock(signalMutex);
+        signalCv.wait(lock, [this] { return !emitted.empty(); });
+        signal = std::move(emitted.front());
+        emitted.pop();
+        const auto it = handlers.find(signal["connection"].get<uint64_t>());
+        if (it == handlers.end())
+          continue; // disconnected since
+        handler = it->second.handler;
+      }
+      try {
+        (*handler)(signal["args"]);
+      } catch (const std::exception &e) {
+        fprintf(stderr, "kwinpp: signal callback threw: %s\n", e.what());
+      } catch (...) {
+        fprintf(stderr, "kwinpp: signal callback threw\n");
+      }
+    }
   }
 
   /* The bus loop. Never returns unless the bus connection goes away. */
@@ -429,6 +503,22 @@ private:
       cv.notify_all();
       return DBUS_HANDLER_RESULT_HANDLED;
     }
+    if (dbus_message_is_method_call(message, INTERFACE, "emit")) {
+      DBusErrorHolder error;
+      const char *json = nullptr;
+      if (!dbus_message_get_args(message, error, DBUS_TYPE_STRING, &json,
+                                 DBUS_TYPE_INVALID))
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+      nlohmann::json signal = nlohmann::json::parse(json, nullptr, false);
+      sendReply(message, nullptr);
+      if (!signal.is_object() || !signal.contains("connection") ||
+          !signal["connection"].is_number_unsigned())
+        return DBUS_HANDLER_RESULT_HANDLED;
+      std::lock_guard lock(signalMutex);
+      emitted.push(std::move(signal));
+      signalCv.notify_one();
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
     if (dbus_message_is_method_call(message, DBUS_INTERFACE_INTROSPECTABLE,
                                     "Introspect")) {
       sendReply(message, INTROSPECTION);
@@ -456,8 +546,10 @@ private:
 
   /* Hands the next request to a waiting poll. Call with mutex held. */
   void flush() {
-    if (pendingPoll && !requests.empty())
-      replyToPoll(requests.back());
+    if (pendingPoll && !requests.empty()) {
+      replyToPoll(requests.front());
+      requests.pop();
+    }
   }
 };
 
@@ -571,6 +663,7 @@ void start() {
 
   // from here on only the bus thread touches the connection
   std::thread([] { bridge->run(); }).detach();
+  std::thread([] { bridge->runSignals(); }).detach();
 
   std::unique_lock lock(bridge->mutex);
   if (!bridge->cv.wait_for(lock, CALL_TIMEOUT, [] { return bridge->ready; }))
@@ -632,6 +725,12 @@ void release_handle(const void *handle) noexcept {
   }
   if (startError || !bridge)
     return;
+  {
+    // the script drops the object's connections when it releases it
+    std::lock_guard lock(bridge->signalMutex);
+    for (auto it = bridge->handlers.begin(); it != bridge->handlers.end();)
+      it = it->second.target == ref ? bridge->handlers.erase(it) : ++it;
+  }
   try {
     const nlohmann::json request{{"release", ref}};
     std::lock_guard lock(bridge->mutex);
@@ -660,7 +759,7 @@ nlohmann::json call_kwin_func_raw(const std::string &target,
                            [id] { return bridge->results.contains(id); }))
     throw std::runtime_error("KWin didn't answer " + func);
 #ifdef KWINPP_NO_QT
-  nlohmann::json reply = bridge->results.at(id);
+  nlohmann::json reply = std::move(bridge->results.extract(id).mapped());
 #else
   nlohmann::json reply = bridge->results.take(id);
 #endif
@@ -673,4 +772,52 @@ nlohmann::json call_kwin_func_raw(const std::string &target,
   return reply.contains("value") ? std::move(reply["value"]) : nullptr;
 }
 
+kwinpp::Connection connect_kwin_signal_raw(const std::string &target,
+                                           const std::string &signal,
+                                           SignalHandler handler) {
+  if (startError)
+    throw std::runtime_error(*startError);
+
+  static std::atomic<uint64_t> nextId = 1;
+  const uint64_t id = nextId++;
+  {
+    // registered first, so nothing emitted right after connecting is lost
+    std::lock_guard lock(bridge->signalMutex);
+    bridge->handlers.emplace(
+        id, Bridge::Handler{target, std::make_shared<const SignalHandler>(
+                                        std::move(handler))});
+  }
+  try {
+    call_kwin_func_raw(target, "$connect", {signal, id});
+  } catch (...) {
+    std::lock_guard lock(bridge->signalMutex);
+    bridge->handlers.erase(id);
+    throw;
+  }
+  return kwinpp::Connection(id);
+}
+
 } // namespace kwinpp_internal
+
+namespace kwinpp {
+
+void Connection::disconnect() noexcept {
+  if (!id || startError || !bridge)
+    return;
+  const uint64_t disconnected = id;
+  id = 0;
+  {
+    std::lock_guard lock(bridge->signalMutex);
+    if (!bridge->handlers.erase(disconnected))
+      return; // already gone with its object
+  }
+  try {
+    const nlohmann::json request{{"disconnect", disconnected}};
+    std::lock_guard lock(bridge->mutex);
+    bridge->submit(request.dump());
+  } catch (...) {
+    // the callback won't be called either way
+  }
+}
+
+} // namespace kwinpp

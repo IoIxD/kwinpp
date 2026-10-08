@@ -20,5 +20,16 @@ int main() {
 }
 ```
 
+Signals are exposed as `on<Signal>()` functions taking a callback:
+
+```c++
+kwinpp::Connection c = workspace.onWindowActivated([](Window *win) {
+  if (win)
+    std::println("activated: {}", win->caption());
+});
+// ...
+c.disconnect();
+```
+
 The library dynloads the one dependency it actually has (libdbus) and, by default, uses C++20 (+ nlohmann::json) to avoid actually linking to Qt.
 However, it does support linking to Qt if one is actually building a Qt application, at which point it just needs C++17.

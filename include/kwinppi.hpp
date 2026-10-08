@@ -3,8 +3,11 @@
 /* helper functions and shit to be used internally by kwinpp. */
 
 #include "kwinpp_types.hpp"
+#include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -15,9 +18,31 @@
 
 #ifndef KWINPP_NO_QT
 #include <QIcon>
+#include <QPalette>
+#include <QRegion>
 #include <QString>
 #include <QUuid>
 #endif
+
+namespace kwinpp {
+
+/* Returned by the on*() signal functions. Callbacks stay connected until
+ * disconnect() is called or the object they're connected to is destroyed;
+ * letting a Connection go out of scope does nothing. */
+class Connection {
+public:
+  Connection() = default;
+  explicit Connection(std::uint64_t id) : id(id) {}
+
+  /* Stops the callback from being called. Safe to call more than once, and
+   * from inside the callback itself. */
+  void disconnect() noexcept;
+
+private:
+  std::uint64_t id = 0; // 0: not connected
+};
+
+}; // namespace kwinpp
 
 namespace kwinpp_internal {
 
@@ -129,6 +154,8 @@ template <typename T> T from_json(const nlohmann::json &v) {
   if constexpr (std::is_void_v<U>) {
     return;
   } else if constexpr (std::is_pointer_v<U>) {
+    if (!v.is_string())
+      return nullptr;
     return handle_for<std::remove_cv_t<std::remove_pointer_t<U>>>(
         json_string(v));
   } else if constexpr (std::is_same_v<U, bool>) {
@@ -137,6 +164,8 @@ template <typename T> T from_json(const nlohmann::json &v) {
     return static_cast<U>(json_integer(v));
   } else if constexpr (std::is_floating_point_v<U>) {
     return static_cast<U>(json_double(v));
+  } else if constexpr (std::is_same_v<U, std::chrono::milliseconds>) {
+    return U(json_integer(v));
   } else if constexpr (std::is_same_v<U, std::string>) {
     return json_string(v);
 #ifndef KWINPP_NO_QT
@@ -147,6 +176,15 @@ template <typename T> T from_json(const nlohmann::json &v) {
   } else if constexpr (std::is_same_v<U, QIcon>) {
     // icons can't be serialized from inside a KWin script
     return QIcon();
+  } else if constexpr (std::is_same_v<U, QPalette>) {
+    // neither can palettes
+    return QPalette();
+  } else if constexpr (std::is_same_v<U, QRegion>) {
+    QRegion region;
+    if (v.is_array())
+      for (const nlohmann::json &e : v)
+        region += from_json<KWin::Rect>(e);
+    return region;
 #endif
   } else if constexpr (std::is_same_v<U, KWin::Rect>) {
     return KWin::Rect(int(std::round(json_double(json_member(v, "x")))),
@@ -188,6 +226,36 @@ template <typename Ret, typename... Args>
 Ret call_kwin_func(const std::string &target, const std::string &func,
                    const Args &...args) {
   return from_json<Ret>(call_kwin_func_raw(target, func, {to_json(args)...}));
+}
+
+/* Called with the signal's arguments, as sent by the script. */
+using SignalHandler = std::function<void(const nlohmann::json &args)>;
+
+/* Connects handler to signal on the object referenced by target inside KWin.
+ * Throws std::runtime_error if the object doesn't have that signal. */
+kwinpp::Connection connect_kwin_signal_raw(const std::string &target,
+                                           const std::string &signal,
+                                           SignalHandler handler);
+
+template <typename... Args, std::size_t... I>
+void invoke_with_json(const std::function<void(Args...)> &callback,
+                      const nlohmann::json &args, std::index_sequence<I...>) {
+  static const nlohmann::json null;
+  callback(from_json<std::decay_t<Args>>(
+      args.is_array() && I < args.size() ? args[I] : null)...);
+}
+
+/* Callbacks are run one at a time on a thread of kwinpp's, so they can call
+ * back into KWin but have to synchronize with the rest of the program. */
+template <typename... Args>
+kwinpp::Connection connect_kwin_signal(const std::string &target,
+                                       const std::string &signal,
+                                       std::function<void(Args...)> callback) {
+  return connect_kwin_signal_raw(
+      target, signal,
+      [callback = std::move(callback)](const nlohmann::json &args) {
+        invoke_with_json(callback, args, std::index_sequence_for<Args...>{});
+      });
 }
 
 }; // namespace kwinpp_internal

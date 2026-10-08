@@ -153,41 +153,94 @@ public:
         "workspace", "WorkspaceWrapper.setCurrentActivity", val);
   }
 
-  void onWindowAdded(std::function<void(KWin::Window *window)> callback);
-  void onWindowRemoved(std::function<void(KWin::Window *window)> callback);
-  void onWindowActivated(std::function<void(KWin::Window *window)> callback);
+  kwinpp::Connection
+  onWindowAdded(std::function<void(KWin::Window *window)> callback) {
+
+    return kwinpp_internal::connect_kwin_signal("workspace", "windowAdded",
+
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowRemoved(std::function<void(KWin::Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "windowRemoved",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowActivated(std::function<void(KWin::Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "windowActivated",
+                                                std::move(callback));
+  }
   /* This signal is emitted when a virtual desktop is added or removed. */
-  void onDesktopsChanged(std::function<void()> callback);
+  kwinpp::Connection onDesktopsChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "desktopsChanged",
+                                                std::move(callback));
+  }
   /* Signal emitted whenever the layout of virtual desktops changed. That is
    * desktopGrid(Size/Width/Height) will have new values. 4.11 */
-  void onDesktopLayoutChanged(std::function<void()> callback);
+  kwinpp::Connection onDesktopLayoutChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "desktopLayoutChanged", std::move(callback));
+  }
   /* Emitted when the output list changes, e.g. an output is connected or
    * removed. */
-  void onScreensChanged(std::function<void()> callback);
+  kwinpp::Connection onScreensChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "screensChanged",
+                                                std::move(callback));
+  }
   /* Signal emitted whenever the current activity changed. id id of the new
    * activity */
-  void onCurrentActivityChanged(std::function<void(const String &id)> callback);
+  kwinpp::Connection
+  onCurrentActivityChanged(std::function<void(const String &id)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "currentActivityChanged", std::move(callback));
+  }
   /* Signal emitted whenever the list of activities changed. id id of the new
    * activity */
-  void onActivitiesChanged(std::function<void(const String &id)> callback);
+  kwinpp::Connection
+  onActivitiesChanged(std::function<void(const String &id)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "activitiesChanged", std::move(callback));
+  }
   /* This signal is emitted when a new activity is added id id of the new
    * activity */
-  void onActivityAdded(std::function<void(const String &id)> callback);
+  kwinpp::Connection
+  onActivityAdded(std::function<void(const String &id)> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "activityAdded",
+                                                std::move(callback));
+  }
   /* This signal is emitted when the activity is removed id id of the removed
    * activity */
-  void onActivityRemoved(std::function<void(const String &id)> callback);
+  kwinpp::Connection
+  onActivityRemoved(std::function<void(const String &id)> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "activityRemoved",
+                                                std::move(callback));
+  }
   /* Emitted whenever the virtualScreenSize changes. virtualScreenSize() 5.0 */
-  void onVirtualScreenSizeChanged(std::function<void()> callback);
+  kwinpp::Connection
+  onVirtualScreenSizeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "virtualScreenSizeChanged", std::move(callback));
+  }
   /* Emitted whenever the virtualScreenGeometry changes.
    * virtualScreenGeometry() 5.0 */
-  void onVirtualScreenGeometryChanged(std::function<void()> callback);
+  kwinpp::Connection
+  onVirtualScreenGeometryChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "virtualScreenGeometryChanged", std::move(callback));
+  }
   /* This signal is emitted when the current virtual desktop changes. */
-  void onCurrentDesktopChanged(
+  kwinpp::Connection onCurrentDesktopChanged(
       std::function<void(KWin::VirtualDesktop *previous,
                          KWin::VirtualDesktop *current, KWin::Output *output)>
-          callback);
+          callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        "workspace", "currentDesktopChanged", std::move(callback));
+  }
   /* This signal is emitted when the cursor position changes. cursorPos() */
-  void onCursorPosChanged(std::function<void()> callback);
+  kwinpp::Connection onCursorPosChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal("workspace", "cursorPosChanged",
+                                                std::move(callback));
+  }
 
   void slotSwitchDesktopNext() {
     return kwinpp_internal::call_kwin_func<void>(
@@ -604,10 +657,24 @@ public:
                                                  "VirtualDesktop.setName", val);
   }
 
-  void onNameChanged(std::function<void> callback);
-  void onX11DesktopNumberChanged(std::function<void> callback);
+  kwinpp::Connection onNameChanged(std::function<void()> callback) {
+
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "nameChanged",
+
+                                                std::move(callback));
+  }
+  kwinpp::Connection onX11DesktopNumberChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "x11DesktopNumberChanged",
+                                                std::move(callback));
+  }
   /* Emitted just before the desktop gets destroyed. */
-  void onAboutToBeDestroyed(std::function<void> callback);
+  kwinpp::Connection onAboutToBeDestroyed(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "aboutToBeDestroyed",
+                                                std::move(callback));
+  }
 };
 
 class Output {
@@ -676,18 +743,34 @@ public:
   }
 
   /* This signal is emitted when the geometry of this output has changed. */
-  void onGeometryChanged(std::function<void>);
+  kwinpp::Connection onGeometryChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "geometryChanged", std::move(callback));
+  }
   /* This signal is emitted when the output has been enabled or disabled. */
-  void onEnabledChanged(std::function<void>);
+  kwinpp::Connection onEnabledChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "enabledChanged", std::move(callback));
+  }
   /* This signal is emitted when the device pixel ratio of the output has
    * changed. */
-  void onScaleChanged(std::function<void>);
+  kwinpp::Connection onScaleChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "scaleChanged", std::move(callback));
+  }
   /* Notifies that the display will be dimmed in time ms. This allows effects to
    * plan for it and hopefully animate it */
-  void onAboutToTurnOff(std::function<void(std::chrono::milliseconds time)>);
+  kwinpp::Connection onAboutToTurnOff(
+      std::function<void(std::chrono::milliseconds time)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "aboutToTurnOff", std::move(callback));
+  }
   /* Notifies that the output has been turned on and the wake can be decorated.
    */
-  void onWakeUp(std::function<void>);
+  kwinpp::Connection onWakeUp(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "wakeUp", std::move(callback));
+  }
 
   /* Notifies that the output is about to change configuration based on a user
    * interaction. Be it because it gets a transformation or moved around. Only
@@ -697,25 +780,96 @@ public:
 
   /* Notifies that the output changed based on a user interaction. Be it because
    * it gets a transformation or moved around. Only to be used for effects */
-  void onChanged(std::function<void>);
-  void onCurrentModeChanged(std::function<void>);
-  void onModesChanged(std::function<void>);
-  void onOutputChange(std::function<void(const Region &damagedRegion)>);
-  void onTransformChanged(std::function<void>);
-  void onDpmsModeChanged(std::function<void>);
-  void onCapabilitiesChanged(std::function<void>);
-  void onOverscanChanged(std::function<void>);
-  void onVrrPolicyChanged(std::function<void>);
-  void onRgbRangeChanged(std::function<void>);
-  void onWideColorGamutChanged(std::function<void>);
-  void onSdrBrightnessChanged(std::function<void>);
-  void onHighDynamicRangeChanged(std::function<void>);
-  void onAutoRotationPolicyChanged(std::function<void>);
-  void onIccProfileChanged(std::function<void>);
-  void onIccProfilePathChanged(std::function<void>);
-  void onBrightnessMetadataChanged(std::function<void>);
-  void onSdrGamutWidenessChanged(std::function<void>);
-  void onColorDescriptionChanged(std::function<void>);
+  kwinpp::Connection onChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "changed", std::move(callback));
+  }
+  kwinpp::Connection onCurrentModeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "currentModeChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onModesChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "modesChanged", std::move(callback));
+  }
+  kwinpp::Connection
+  onOutputChange(std::function<void(const Region &damagedRegion)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "outputChange", std::move(callback));
+  }
+  kwinpp::Connection onTransformChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "transformChanged", std::move(callback));
+  }
+  kwinpp::Connection onDpmsModeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "dpmsModeChanged", std::move(callback));
+  }
+  kwinpp::Connection onCapabilitiesChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "capabilitiesChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onOverscanChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "overscanChanged", std::move(callback));
+  }
+  kwinpp::Connection onVrrPolicyChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "vrrPolicyChanged", std::move(callback));
+  }
+  kwinpp::Connection onRgbRangeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "rgbRangeChanged", std::move(callback));
+  }
+  kwinpp::Connection onWideColorGamutChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "wideColorGamutChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onSdrBrightnessChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "sdrBrightnessChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onHighDynamicRangeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "highDynamicRangeChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onAutoRotationPolicyChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "autoRotationPolicyChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onIccProfileChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "iccProfileChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onIccProfilePathChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "iccProfilePathChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onBrightnessMetadataChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "brightnessMetadataChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onSdrGamutWidenessChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "sdrGamutWidenessChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onColorDescriptionChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "colorDescriptionChanged",
+                                                std::move(callback));
+  }
 
   PointF mapToGlobal(const PointF &pos) const {
     return kwinpp_internal::call_kwin_func<PointF>(
@@ -1331,93 +1485,326 @@ public:
                                                  "Window.setTile", value);
   }
 
-  void onStackingOrderChanged(std::function<void()> callback);
-  void onShadeChanged(std::function<void()> callback);
-  void onOpacityChanged(
-      std::function<void(KWin::Window *window, double oldOpacity)> callback);
-  void onDamaged(std::function<void(KWin::Window *window)> callback);
-  void onInputTransformationChanged(std::function<void()> callback);
-  void onClosed(std::function<void()> callback);
-  void onWindowShown(std::function<void(KWin::Window *window)> callback);
-  void onWindowHidden(std::function<void(KWin::Window *window)> callback);
+  kwinpp::Connection onStackingOrderChanged(std::function<void()> callback) {
+
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "stackingOrderChanged",
+
+                                                std::move(callback));
+  }
+  kwinpp::Connection onShadeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "shadeChanged", std::move(callback));
+  }
+  kwinpp::Connection onOpacityChanged(
+      std::function<void(KWin::Window *window, double oldOpacity)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "opacityChanged", std::move(callback));
+  }
+  kwinpp::Connection
+  onDamaged(std::function<void(KWin::Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "damaged", std::move(callback));
+  }
+  kwinpp::Connection
+  onInputTransformationChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "inputTransformationChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onClosed(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "closed", std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowShown(std::function<void(KWin::Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "windowShown", std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowHidden(std::function<void(KWin::Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "windowHidden", std::move(callback));
+  }
   /* Emitted whenever the Window's screen changes. This can happen either in
    * consequence to a screen being removed/added or if the Window's geometry
    * changes. */
-  void onOutputChanged(std::function<void()> callback);
-  void onSkipCloseAnimationChanged(std::function<void()> callback);
+  kwinpp::Connection onOutputChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "outputChanged", std::move(callback));
+  }
+  kwinpp::Connection
+  onSkipCloseAnimationChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "skipCloseAnimationChanged",
+                                                std::move(callback));
+  }
   /* Emitted whenever the window role of the window changes. */
-  void onWindowRoleChanged(std::function<void()> callback);
+  kwinpp::Connection onWindowRoleChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "windowRoleChanged",
+                                                std::move(callback));
+  }
   /* Emitted whenever the window class name or resource name of the window
    * changes.  */
-  void onWindowClassChanged(std::function<void()> callback);
+  kwinpp::Connection onWindowClassChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "windowClassChanged",
+                                                std::move(callback));
+  }
   /* Emitted whenever the Surface for this Window changes. */
-  void onSurfaceChanged(std::function<void()> callback);
+  kwinpp::Connection onSurfaceChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "surfaceChanged", std::move(callback));
+  }
   /* Emitted whenever the window's shadow changes. */
-  void onShadowChanged(std::function<void()> callback);
+  kwinpp::Connection onShadowChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "shadowChanged", std::move(callback));
+  }
   /* This signal is emitted when the Window's buffer geometry changes. */
-  void onBufferGeometryChanged(
-      std::function<void(const RectF &oldGeometry)> callback);
+  kwinpp::Connection onBufferGeometryChanged(
+      std::function<void(const RectF &oldGeometry)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "bufferGeometryChanged",
+                                                std::move(callback));
+  }
   /* This signal is emitted when the Window's frame geometry changes. */
-  void onFrameGeometryChanged(
-      std::function<void(const RectF &oldGeometry)> callback);
+  kwinpp::Connection onFrameGeometryChanged(
+      std::function<void(const RectF &oldGeometry)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "frameGeometryChanged",
+                                                std::move(callback));
+  }
   /* This signal is emitted when the Window's client geometry has changed. */
-  void onClientGeometryChanged(
-      std::function<void(const RectF &oldGeometry)> callback);
+  kwinpp::Connection onClientGeometryChanged(
+      std::function<void(const RectF &oldGeometry)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "clientGeometryChanged",
+                                                std::move(callback));
+  }
   /* This signal is emitted when the frame geometry is about to change. the new
    * geometry is not known yet */
-  void onFrameGeometryAboutToChange(std::function<void()> callback);
+  kwinpp::Connection
+  onFrameGeometryAboutToChange(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "frameGeometryAboutToChange",
+                                                std::move(callback));
+  }
   /* This signal is emitted when the visible geometry has changed. */
-  void onVisibleGeometryChanged(std::function<void()> callback);
+  kwinpp::Connection onVisibleGeometryChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "visibleGeometryChanged",
+                                                std::move(callback));
+  }
   /* This signal is emitted when associated tile has changed, including from and
    * to none */
-  void onTileChanged(std::function<void(KWin::Tile *tile)> callback);
-  void onFullScreenChanged(std::function<void()> callback);
-  void onSkipTaskbarChanged(std::function<void()> callback);
-  void onSkipPagerChanged(std::function<void()> callback);
-  void onSkipSwitcherChanged(std::function<void()> callback);
-  void onIconChanged(std::function<void()> callback);
-  void onActiveChanged(std::function<void()> callback);
-  void onKeepAboveChanged(std::function<void(bool)> callback);
-  void onKeepBelowChanged(std::function<void(bool)> callback);
+  kwinpp::Connection
+  onTileChanged(std::function<void(KWin::Tile *tile)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "tileChanged", std::move(callback));
+  }
+  kwinpp::Connection onFullScreenChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "fullScreenChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onSkipTaskbarChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "skipTaskbarChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onSkipPagerChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "skipPagerChanged", std::move(callback));
+  }
+  kwinpp::Connection onSkipSwitcherChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "skipSwitcherChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onIconChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "iconChanged", std::move(callback));
+  }
+  kwinpp::Connection onActiveChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "activeChanged", std::move(callback));
+  }
+  kwinpp::Connection onKeepAboveChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "keepAboveChanged", std::move(callback));
+  }
+  kwinpp::Connection onKeepBelowChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "keepBelowChanged", std::move(callback));
+  }
   /* Emitted whenever the demands attention state changes. */
-  void onDemandsAttentionChanged(std::function<void()> callback);
-  void onDesktopsChanged(std::function<void()> callback);
-  void onActivitiesChanged(std::function<void()> callback);
-  void onMinimizedChanged(std::function<void()> callback);
+  kwinpp::Connection onDemandsAttentionChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "demandsAttentionChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onDesktopsChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "desktopsChanged", std::move(callback));
+  }
+  kwinpp::Connection onActivitiesChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "activitiesChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onMinimizedChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "minimizedChanged", std::move(callback));
+  }
 #ifndef KWINPP_NO_QT // no std equivalent for QPalette
-  void onPaletteChanged(std::function<void(const QPalette &p)> callback);
+  kwinpp::Connection
+  onPaletteChanged(std::function<void(const QPalette &p)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "paletteChanged", std::move(callback));
+  }
 #endif
-  void onColorSchemeChanged(std::function<void()> callback);
-  void onCaptionChanged(std::function<void()> callback);
-  void onCaptionNormalChanged(std::function<void()> callback);
+  kwinpp::Connection onColorSchemeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "colorSchemeChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onCaptionChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "captionChanged", std::move(callback));
+  }
+  kwinpp::Connection onCaptionNormalChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "captionNormalChanged",
+                                                std::move(callback));
+  }
   // void onMaximizedAboutToChange(std::function<void(MaximizeMode mode)>
   // callback);
-  void onMaximizedChanged(std::function<void()> callback);
-  void onTransientChanged(std::function<void()> callback);
-  void onModalChanged(std::function<void()> callback);
-  void onQuickTileModeChanged(std::function<void()> callback);
-  void onMoveResizedChanged(std::function<void()> callback);
+  kwinpp::Connection onMaximizedChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "maximizedChanged", std::move(callback));
+  }
+  kwinpp::Connection onTransientChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "transientChanged", std::move(callback));
+  }
+  kwinpp::Connection onModalChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "modalChanged", std::move(callback));
+  }
+  kwinpp::Connection onQuickTileModeChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "quickTileModeChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onMoveResizedChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "moveResizedChanged",
+                                                std::move(callback));
+  }
   // void onMoveResizeCursorChanged(std::function<void(CursorShape)> callback);
-  void onInteractiveMoveResizeStarted(std::function<void()> callback);
-  void onInteractiveMoveResizeStepped(
-      std::function<void(const RectF &geometry)> callback);
-  void onInteractiveMoveResizeFinished(std::function<void()> callback);
-  void onCloseableChanged(std::function<void(bool)> callback);
-  void onMinimizeableChanged(std::function<void(bool)> callback);
-  void onShadeableChanged(std::function<void(bool)> callback);
-  void onMaximizeableChanged(std::function<void(bool)> callback);
-  void onDesktopFileNameChanged(std::function<void()> callback);
-  void onApplicationMenuChanged(std::function<void()> callback);
-  void onHasApplicationMenuChanged(std::function<void(bool)> callback);
-  void onApplicationMenuActiveChanged(std::function<void(bool)> callback);
-  void onUnresponsiveChanged(std::function<void(bool)> callback);
-  void onDecorationChanged(std::function<void()> callback);
-  void onHiddenChanged(std::function<void()> callback);
-  void onHiddenByShowDesktopChanged(std::function<void()> callback);
-  void onLockScreenOverlayChanged(std::function<void()> callback);
-  void onReadyForPaintingChanged(std::function<void()> callback);
-  void onMaximizeGeometryRestoreChanged(std::function<void()> callback);
-  void onFullscreenGeometryRestoreChanged(std::function<void()> callback);
+  kwinpp::Connection
+  onInteractiveMoveResizeStarted(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "interactiveMoveResizeStarted",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onInteractiveMoveResizeStepped(
+      std::function<void(const RectF &geometry)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "interactiveMoveResizeStepped",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onInteractiveMoveResizeFinished(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "interactiveMoveResizeFinished",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onCloseableChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "closeableChanged", std::move(callback));
+  }
+  kwinpp::Connection onMinimizeableChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "minimizeableChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onShadeableChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "shadeableChanged", std::move(callback));
+  }
+  kwinpp::Connection onMaximizeableChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "maximizeableChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onDesktopFileNameChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "desktopFileNameChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onApplicationMenuChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "applicationMenuChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onHasApplicationMenuChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "hasApplicationMenuChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onApplicationMenuActiveChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "applicationMenuActiveChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onUnresponsiveChanged(std::function<void(bool)> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "unresponsiveChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onDecorationChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "decorationChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onHiddenChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "hiddenChanged", std::move(callback));
+  }
+  kwinpp::Connection
+  onHiddenByShowDesktopChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "hiddenByShowDesktopChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onLockScreenOverlayChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "lockScreenOverlayChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onReadyForPaintingChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "readyForPaintingChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onMaximizeGeometryRestoreChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "maximizeGeometryRestoreChanged",
+        std::move(callback));
+  }
+  kwinpp::Connection
+  onFullscreenGeometryRestoreChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "fullscreenGeometryRestoreChanged",
+        std::move(callback));
+  }
 
   void closeWindow() {
     return kwinpp_internal::call_kwin_func<void>(kwinpp_internal::ref_of(this),
@@ -1443,7 +1830,14 @@ public:
   // undocumented/C++ scripting only type
   // TileModel *model();
 
-  void onTileRemoved(std::function<void(KWin::Tile *tile)> callback);
+  kwinpp::Connection
+  onTileRemoved(std::function<void(KWin::Tile *tile)> callback) {
+
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "tileRemoved",
+
+                                                std::move(callback));
+  }
 
   KWin::Tile *bestTileForPosition(double x, double y) {
     return kwinpp_internal::call_kwin_func<KWin::Tile *>(
@@ -1510,16 +1904,56 @@ public:
                                                  "Tile.setPadding", value);
   }
 
-  void onRelativeGeometryChanged(std::function<void()>);
-  void onAbsoluteGeometryChanged(std::function<void()>);
-  void onWindowGeometryChanged(std::function<void()>);
-  void onPaddingChanged(std::function<void(double padding)>);
-  void onRowChanged(std::function<void(int row)>);
-  void onIsLayoutChanged(std::function<void(bool isLayout)>);
-  void onChildTilesChanged(std::function<void()>);
-  void onWindowAdded(std::function<void(Window *window)>);
-  void onWindowRemoved(std::function<void(Window *window)>);
-  void onWindowsChanged(std::function<void()>);
+  kwinpp::Connection onRelativeGeometryChanged(std::function<void()> callback) {
+
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "relativeGeometryChanged",
+
+                                                std::move(callback));
+  }
+  kwinpp::Connection onAbsoluteGeometryChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "absoluteGeometryChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection onWindowGeometryChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "windowGeometryChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onPaddingChanged(std::function<void(double padding)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "paddingChanged", std::move(callback));
+  }
+  kwinpp::Connection onRowChanged(std::function<void(int row)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "rowChanged", std::move(callback));
+  }
+  kwinpp::Connection
+  onIsLayoutChanged(std::function<void(bool isLayout)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "isLayoutChanged", std::move(callback));
+  }
+  kwinpp::Connection onChildTilesChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(kwinpp_internal::ref_of(this),
+                                                "childTilesChanged",
+                                                std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowAdded(std::function<void(Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "windowAdded", std::move(callback));
+  }
+  kwinpp::Connection
+  onWindowRemoved(std::function<void(Window *window)> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "windowRemoved", std::move(callback));
+  }
+  kwinpp::Connection onWindowsChanged(std::function<void()> callback) {
+    return kwinpp_internal::connect_kwin_signal(
+        kwinpp_internal::ref_of(this), "windowsChanged", std::move(callback));
+  }
 
   void resizeByPixels(double delta, Edge edge) {
     return kwinpp_internal::call_kwin_func<void>(
