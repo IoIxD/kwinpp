@@ -1,6 +1,6 @@
 # kwinpp
 
-Small library for using the KWin scripting API via C++, allowing people to write apps that use KDE-specific information like window size/positioning and cursor position (without having to go through KWin's Javascript sandbox directly). It works by registering a KWin script (via dbus) that bridges a set of dbus calls to functions inside the script that dispatch the results.
+Small library for using the KWin scripting API via C++, allowing people to write apps that use KDE-specific information like window size/positioning and cursor position (without having to go through KWin's Javascript API directly). It works by registering a KWin script (via dbus) that bridges a set of dbus calls to functions inside the script that dispatch the results.
 
 The API mirrors mostly mirrors that of KWin scripting:
 
