@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(KWINPP_NO_QT "Don't have functions return Qt types" ON)
 option(KWINPP_SHARED "Build as a shared library" ON)
+option(KWINPP_EXAMPLES "Build examples" ON)
 
 if(KWINPP_NO_QT)
   set(CMAKE_CXX_STANDARD 20)
@@ -21,8 +22,10 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/submodules/json)
 if(KWINPP_SHARED)
   add_library(${PROJECT_NAME} SHARED ${sources})
 else()
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   add_library(${PROJECT_NAME} STATIC ${sources})
 endif()
+
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
@@ -43,4 +46,6 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json::nlohmann_json)
 
-add_subdirectory(examples)
+if(KWINPP_EXAMPLES)
+  add_subdirectory(examples)
+endif()
