@@ -6,7 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(KWINPP_NO_QT "Don't have functions return Qt types" ON)
-option(KWINPP_SHARED "Build as a shared library ON)
+option(KWINPP_SHARED "Build as a shared library" ON)
 
 if(KWINPP_NO_QT)
   set(CMAKE_CXX_STANDARD 20)
