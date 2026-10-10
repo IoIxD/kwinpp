@@ -62,62 +62,62 @@ public:
     ElectricNone,
   };
 
-  KWINPP_EXPORT const List<KWin::VirtualDesktop *> desktops() {
-    return kwinpp_internal::call_kwin_func<const List<KWin::VirtualDesktop *>>(
+  KWINPP_EXPORT List<KWin::VirtualDesktop *> desktops() const {
+    return kwinpp_internal::call_kwin_func<List<KWin::VirtualDesktop *>>(
         "workspace", "WorkspaceWrapper.desktops");
   }
-  KWINPP_EXPORT const Size desktopGridSize() {
-    return kwinpp_internal::call_kwin_func<const Size>(
+  KWINPP_EXPORT Size desktopGridSize() const {
+    return kwinpp_internal::call_kwin_func<Size>(
         "workspace", "WorkspaceWrapper.desktopGridSize");
   }
-  KWINPP_EXPORT const int desktopGridWidth() {
+  KWINPP_EXPORT int desktopGridWidth() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.desktopGridWidth");
   }
-  KWINPP_EXPORT const int desktopGridHeight() {
+  KWINPP_EXPORT int desktopGridHeight() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.desktopGridHeight");
   }
-  KWINPP_EXPORT const int workspaceWidth() {
+  KWINPP_EXPORT int workspaceWidth() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.workspaceWidth");
   }
-  KWINPP_EXPORT const int workspaceHeight() {
+  KWINPP_EXPORT int workspaceHeight() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.workspaceHeight");
   }
-  KWINPP_EXPORT const Size workspaceSize() {
-    return kwinpp_internal::call_kwin_func<const Size>(
+  KWINPP_EXPORT Size workspaceSize() const {
+    return kwinpp_internal::call_kwin_func<Size>(
         "workspace", "WorkspaceWrapper.workspaceSize");
   }
-  KWINPP_EXPORT const KWin::Output *activeScreen() {
-    return kwinpp_internal::call_kwin_func<const KWin::Output *>(
+  KWINPP_EXPORT KWin::Output *activeScreen() const {
+    return kwinpp_internal::call_kwin_func<KWin::Output *const>(
         "workspace", "WorkspaceWrapper.activeScreen");
   }
-  KWINPP_EXPORT const List<KWin::Output *> screens() {
-    return kwinpp_internal::call_kwin_func<const List<KWin::Output *>>(
+  KWINPP_EXPORT List<KWin::Output *> screens() const {
+    return kwinpp_internal::call_kwin_func<List<KWin::Output *>>(
         "workspace", "WorkspaceWrapper.screens");
   }
-  KWINPP_EXPORT const StringList activities() {
-    return kwinpp_internal::call_kwin_func<const StringList>(
+  KWINPP_EXPORT StringList activities() const {
+    return kwinpp_internal::call_kwin_func<StringList>(
         "workspace", "WorkspaceWrapper.activities");
   }
   /*The bounding size of all screens combined. Overlapping areas are not counted
    * multiple times. */
-  KWINPP_EXPORT const Size virtualScreenSize() {
-    return kwinpp_internal::call_kwin_func<const Size>(
+  KWINPP_EXPORT Size virtualScreenSize() const {
+    return kwinpp_internal::call_kwin_func<Size>(
         "workspace", "WorkspaceWrapper.virtualScreenSize");
   }
   /*The bounding geometry of all screens combined. Always starts at (0,0) and
    * has virtualScreenSize as it's size. */
-  KWINPP_EXPORT const Rect virtualScreenGeometry() {
-    return kwinpp_internal::call_kwin_func<const Rect>(
+  KWINPP_EXPORT Rect virtualScreenGeometry() const {
+    return kwinpp_internal::call_kwin_func<Rect>(
         "workspace", "WorkspaceWrapper.virtualScreenGeometry");
   }
   /* List of Clients currently managed by KWin, orderd by their visibility
    * (later ones cover earlier ones).*/
-  KWINPP_EXPORT const List<KWin::Window *> stackingOrder() {
-    return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
+  KWINPP_EXPORT List<KWin::Window *> stackingOrder() const {
+    return kwinpp_internal::call_kwin_func<List<KWin::Window *>>(
         "workspace", "WorkspaceWrapper.stackingOrder");
   }
 
@@ -649,11 +649,11 @@ class VirtualDesktop {
 public:
   KWINPP_EXPORT ~VirtualDesktop() { kwinpp_internal::release_handle(this); }
 
-  KWINPP_EXPORT const String id() {
+  KWINPP_EXPORT String id() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.id");
   }
-  KWINPP_EXPORT const unsigned int x11DesktopNumber() {
+  KWINPP_EXPORT unsigned int x11DesktopNumber() const {
     return kwinpp_internal::call_kwin_func<const unsigned int>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.x11DesktopNumber");
   }
@@ -730,27 +730,27 @@ public:
     Always,
   };
 
-  KWINPP_EXPORT const Rect geometry() {
+  KWINPP_EXPORT Rect geometry() const {
     return kwinpp_internal::call_kwin_func<const Rect>(
         kwinpp_internal::ref_of(this), "Output.geometry");
   }
-  KWINPP_EXPORT const double devicePixelRatio() {
+  KWINPP_EXPORT double devicePixelRatio() const {
     return kwinpp_internal::call_kwin_func<const double>(
         kwinpp_internal::ref_of(this), "Output.devicePixelRatio");
   }
-  KWINPP_EXPORT const String name() {
+  KWINPP_EXPORT String name() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.name");
   }
-  KWINPP_EXPORT const String manufacturer() {
+  KWINPP_EXPORT String manufacturer() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.manufacturer");
   }
-  KWINPP_EXPORT const String model() {
+  KWINPP_EXPORT String model() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.model");
   }
-  KWINPP_EXPORT const String serialNumber() {
+  KWINPP_EXPORT String serialNumber() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.serialNumber");
   }
@@ -1917,35 +1917,35 @@ public:
     Vertical,
   };
 
-  KWINPP_EXPORT const RectF absoluteGeometry() {
+  KWINPP_EXPORT RectF absoluteGeometry() const {
     return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometry");
   }
-  KWINPP_EXPORT const RectF absoluteGeometryInScreen() {
+  KWINPP_EXPORT RectF absoluteGeometryInScreen() const {
     return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometryInScreen");
   }
-  KWINPP_EXPORT const int positionInLayout() {
+  KWINPP_EXPORT int positionInLayout() const {
     return kwinpp_internal::call_kwin_func<const int>(
         kwinpp_internal::ref_of(this), "Tile.positionInLayout");
   }
-  KWINPP_EXPORT const Tile *parent() {
-    return kwinpp_internal::call_kwin_func<const Tile *>(
+  KWINPP_EXPORT Tile *parent() const {
+    return kwinpp_internal::call_kwin_func<Tile *const>(
         kwinpp_internal::ref_of(this), "Tile.parent");
   }
-  KWINPP_EXPORT const List<KWin::Tile *> tiles() {
+  KWINPP_EXPORT List<KWin::Tile *> tiles() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Tile *>>(
         kwinpp_internal::ref_of(this), "Tile.tiles");
   }
-  KWINPP_EXPORT const List<KWin::Window *> windows() {
+  KWINPP_EXPORT List<KWin::Window *> windows() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
         kwinpp_internal::ref_of(this), "Tile.windows");
   }
-  KWINPP_EXPORT const bool isLayout() {
+  KWINPP_EXPORT bool isLayout() const {
     return kwinpp_internal::call_kwin_func<const bool>(
         kwinpp_internal::ref_of(this), "Tile.isLayout");
   }
-  KWINPP_EXPORT const bool canBeRemoved() {
+  KWINPP_EXPORT bool canBeRemoved() const {
     return kwinpp_internal::call_kwin_func<const bool>(
         kwinpp_internal::ref_of(this), "Tile.canBeRemoved");
   }
