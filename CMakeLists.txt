@@ -6,6 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(KWINPP_NO_QT "Don't have functions return Qt types" ON)
+option(KWINPP_SHARED "Build as a shared library ON)
 
 if(KWINPP_NO_QT)
   set(CMAKE_CXX_STANDARD 20)
@@ -17,7 +18,11 @@ FILE(GLOB_RECURSE sources src/*.cpp)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/submodules/json)
 
-add_library(${PROJECT_NAME} SHARED ${sources})
+if(KWINPP_SHARED)
+  add_library(${PROJECT_NAME} SHARED ${sources})
+else()
+  add_library(${PROJECT_NAME} STATIC ${sources})
+endif()
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
