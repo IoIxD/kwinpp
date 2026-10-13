@@ -646,8 +646,7 @@ void start() {
            {scriptPath, PLUGIN_NAME}, &id);
   if (id < 0)
     throw std::runtime_error("KWin refused to load the script");
-  callKWin(("/Scripting/Script" + std::to_string(id)).c_str(),
-           "org.kde.kwin.Script", "run");
+  callKWin("/Scripting", "org.kde.kwin.Scripting", "start");
 
   // from here on only the bus thread touches the connection
   std::thread([] { bridge->run(); }).detach();
