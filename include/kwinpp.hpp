@@ -59,61 +59,61 @@ public:
     ElectricNone,
   };
 
-  const List<KWin::VirtualDesktop *> desktops() {
+  List<KWin::VirtualDesktop *> desktops() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::VirtualDesktop *>>(
         "workspace", "WorkspaceWrapper.desktops");
   }
-  const Size desktopGridSize() {
+  Size desktopGridSize() const {
     return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.desktopGridSize");
   }
-  const int desktopGridWidth() {
+  int desktopGridWidth() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.desktopGridWidth");
   }
-  const int desktopGridHeight() {
+  int desktopGridHeight() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.desktopGridHeight");
   }
-  const int workspaceWidth() {
+  int workspaceWidth() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.workspaceWidth");
   }
-  const int workspaceHeight() {
+  int workspaceHeight() const {
     return kwinpp_internal::call_kwin_func<const int>(
         "workspace", "WorkspaceWrapper.workspaceHeight");
   }
-  const Size workspaceSize() {
+  Size workspaceSize() const {
     return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.workspaceSize");
   }
-  const KWin::Output *activeScreen() {
-    return kwinpp_internal::call_kwin_func<const KWin::Output *>(
+  KWin::Output *activeScreen() const {
+    return kwinpp_internal::call_kwin_func<KWin::Output *>(
         "workspace", "WorkspaceWrapper.activeScreen");
   }
-  const List<KWin::Output *> screens() {
+  List<KWin::Output *> screens() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Output *>>(
         "workspace", "WorkspaceWrapper.screens");
   }
-  const StringList activities() {
+  StringList activities() const {
     return kwinpp_internal::call_kwin_func<const StringList>(
         "workspace", "WorkspaceWrapper.activities");
   }
   /*The bounding size of all screens combined. Overlapping areas are not counted
    * multiple times. */
-  const Size virtualScreenSize() {
+  Size virtualScreenSize() const {
     return kwinpp_internal::call_kwin_func<const Size>(
         "workspace", "WorkspaceWrapper.virtualScreenSize");
   }
   /*The bounding geometry of all screens combined. Always starts at (0,0) and
    * has virtualScreenSize as it's size. */
-  const Rect virtualScreenGeometry() {
+  Rect virtualScreenGeometry() const {
     return kwinpp_internal::call_kwin_func<const Rect>(
         "workspace", "WorkspaceWrapper.virtualScreenGeometry");
   }
   /* List of Clients currently managed by KWin, orderd by their visibility
    * (later ones cover earlier ones).*/
-  const List<KWin::Window *> stackingOrder() {
+  List<KWin::Window *> stackingOrder() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
         "workspace", "WorkspaceWrapper.stackingOrder");
   }
@@ -636,11 +636,11 @@ class VirtualDesktop {
 public:
   ~VirtualDesktop() { kwinpp_internal::release_handle(this); }
 
-  const String id() {
+  String id() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.id");
   }
-  const unsigned int x11DesktopNumber() {
+  unsigned int x11DesktopNumber() const {
     return kwinpp_internal::call_kwin_func<const unsigned int>(
         kwinpp_internal::ref_of(this), "VirtualDesktop.x11DesktopNumber");
   }
@@ -714,27 +714,27 @@ public:
     Always,
   };
 
-  const Rect geometry() {
+  Rect geometry() const {
     return kwinpp_internal::call_kwin_func<const Rect>(
         kwinpp_internal::ref_of(this), "Output.geometry");
   }
-  const double devicePixelRatio() {
+  double devicePixelRatio() const {
     return kwinpp_internal::call_kwin_func<const double>(
         kwinpp_internal::ref_of(this), "Output.devicePixelRatio");
   }
-  const String name() {
+  String name() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.name");
   }
-  const String manufacturer() {
+  String manufacturer() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.manufacturer");
   }
-  const String model() {
+  String model() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.model");
   }
-  const String serialNumber() {
+  String serialNumber() const {
     return kwinpp_internal::call_kwin_func<const String>(
         kwinpp_internal::ref_of(this), "Output.serialNumber");
   }
@@ -1845,35 +1845,35 @@ public:
     Vertical,
   };
 
-  const RectF absoluteGeometry() {
+  RectF absoluteGeometry() const {
     return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometry");
   }
-  const RectF absoluteGeometryInScreen() {
+  RectF absoluteGeometryInScreen() const {
     return kwinpp_internal::call_kwin_func<const RectF>(
         kwinpp_internal::ref_of(this), "Tile.absoluteGeometryInScreen");
   }
-  const int positionInLayout() {
+  int positionInLayout() const {
     return kwinpp_internal::call_kwin_func<const int>(
         kwinpp_internal::ref_of(this), "Tile.positionInLayout");
   }
-  const Tile *parent() {
-    return kwinpp_internal::call_kwin_func<const Tile *>(
+  Tile *parent() const {
+    return kwinpp_internal::call_kwin_func<Tile *>(
         kwinpp_internal::ref_of(this), "Tile.parent");
   }
-  const List<KWin::Tile *> tiles() {
+  List<KWin::Tile *> tiles() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Tile *>>(
         kwinpp_internal::ref_of(this), "Tile.tiles");
   }
-  const List<KWin::Window *> windows() {
+  List<KWin::Window *> windows() const {
     return kwinpp_internal::call_kwin_func<const List<KWin::Window *>>(
         kwinpp_internal::ref_of(this), "Tile.windows");
   }
-  const bool isLayout() {
+  bool isLayout() const {
     return kwinpp_internal::call_kwin_func<const bool>(
         kwinpp_internal::ref_of(this), "Tile.isLayout");
   }
-  const bool canBeRemoved() {
+  bool canBeRemoved() const {
     return kwinpp_internal::call_kwin_func<const bool>(
         kwinpp_internal::ref_of(this), "Tile.canBeRemoved");
   }
